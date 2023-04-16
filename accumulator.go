@@ -2,6 +2,7 @@ package go_events_accumulator
 
 import (
 	"context"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -119,34 +120,49 @@ func (a *accum[T]) startFlusher() {
 	flushTicker := time.NewTicker(a.flushInterval)
 	defer flushTicker.Stop()
 
-	events := make([]*eventExtend[T], 0, a.flushSize)
+	wg := sync.WaitGroup{}
+	events := newEventStorage[T](a.flushSize)
+	chSizeTrigger := make(chan struct{})
 
-	for {
-		select {
-		case e := <-a.chEvents:
+	wg.Add(1)
+	go func() {
+		for e := range a.chEvents {
 			// skip finished event (context.DeadlineExceeded)
 			if e.done.Load() {
 				continue
 			}
 
-			events = append(events, e)
-			if len(events) < a.flushSize {
+			if events.put(e) < a.flushSize {
 				continue
 			}
 
-			a.flush(events)
-			events = events[:0]
-			flushTicker.Reset(a.flushInterval)
-
-		case <-flushTicker.C:
-			a.flush(events)
-			events = events[:0]
-
-		case <-a.chStop:
-			a.flush(events)
-			return
+			chSizeTrigger <- struct{}{}
 		}
-	}
+		wg.Done()
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		for {
+			select {
+			case <-chSizeTrigger:
+				a.flush(events.get())
+				flushTicker.Reset(a.flushInterval)
+
+			case <-flushTicker.C:
+				a.flush(events.get())
+
+			case <-a.chStop:
+				a.flush(events.get())
+				return
+			}
+		}
+	}()
+
+	wg.Wait()
+
 }
 
 func (a *accum[T]) flush(events []*eventExtend[T]) {
