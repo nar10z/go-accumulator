@@ -2,7 +2,6 @@ package go_events_accumulator
 
 import (
 	"context"
-	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -15,19 +14,15 @@ const (
 // FlushExec - a function to call when an action needs to be performed
 type FlushExec[T comparable] func(events []T) error
 
-type Accumulator[T comparable] interface {
-	AddAsync(ctx context.Context, event T) error
-	AddSync(ctx context.Context, event T) error
-	Stop()
-}
-
+// Opts ...
 type Opts[T comparable] struct {
 	FlushSize     uint
 	FlushInterval time.Duration
 	FlushFunc     FlushExec[T]
 }
 
-func NewAccumulator[T comparable](opts Opts[T]) (Accumulator[T], error) {
+// NewAccumulator ...
+func NewAccumulator[T comparable](opts Opts[T]) (*accum[T], error) {
 	size := opts.FlushSize
 	if size == 0 {
 		size = defaultFlushSize
@@ -68,6 +63,7 @@ type accum[T comparable] struct {
 	flushFunc FlushExec[T]
 }
 
+// AddAsync ...
 func (a *accum[T]) AddAsync(ctx context.Context, event T) error {
 	if a.isClose {
 		return ErrSendToClose
@@ -86,6 +82,7 @@ func (a *accum[T]) AddAsync(ctx context.Context, event T) error {
 	return nil
 }
 
+// AddSync ...
 func (a *accum[T]) AddSync(ctx context.Context, event T) error {
 	if a.isClose {
 		return ErrSendToClose
@@ -111,6 +108,7 @@ func (a *accum[T]) AddSync(ctx context.Context, event T) error {
 	}
 }
 
+// Stop ...
 func (a *accum[T]) Stop() {
 	a.isClose = true
 	close(a.chStop)
@@ -121,42 +119,34 @@ func (a *accum[T]) startFlusher() {
 	flushTicker := time.NewTicker(a.flushInterval)
 	defer flushTicker.Stop()
 
-	wg := sync.WaitGroup{}
 	events := make([]*eventExtend[T], 0, a.flushSize)
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
-		for {
-			select {
-			case e := <-a.chEvents:
-				// skip finished event (context.DeadlineExceeded)
-				if e.done.Load() {
-					continue
-				}
-
-				events = append(events, e)
-				if len(events) < a.flushSize {
-					continue
-				}
-
-				a.flush(events)
-				events = events[:0]
-				flushTicker.Reset(a.flushInterval)
-
-			case <-flushTicker.C:
-				a.flush(events)
-				events = events[:0]
-
-			case <-a.chStop:
-				a.flush(events)
-				return
+	for {
+		select {
+		case e := <-a.chEvents:
+			// skip finished event (context.DeadlineExceeded)
+			if e.done.Load() {
+				continue
 			}
-		}
-	}()
 
-	wg.Wait()
+			events = append(events, e)
+			if len(events) < a.flushSize {
+				continue
+			}
+
+			a.flush(events)
+			events = events[:0]
+			flushTicker.Reset(a.flushInterval)
+
+		case <-flushTicker.C:
+			a.flush(events)
+			events = events[:0]
+
+		case <-a.chStop:
+			a.flush(events)
+			return
+		}
+	}
 }
 
 func (a *accum[T]) flush(events []*eventExtend[T]) {
