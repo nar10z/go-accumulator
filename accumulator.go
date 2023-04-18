@@ -85,26 +85,24 @@ func (a *accum[T]) AddAsync(ctx context.Context, event T) error {
 
 // AddSync ...
 func (a *accum[T]) AddSync(ctx context.Context, event T) error {
-	if a.isClose {
-		return ErrSendToClose
-	}
-
 	ch := make(chan error)
+	defer close(ch)
+
 	e := &eventExtend[T]{
 		fallback: ch,
 		e:        event,
 	}
-	defer func() {
-		e.done.Store(true)
-		close(ch)
-	}()
 
+	if a.isClose {
+		return ErrSendToClose
+	}
 	a.chEvents <- e
 
 	select {
 	case err := <-ch:
 		return err
 	case <-ctx.Done():
+		e.done.Store(true)
 		return context.DeadlineExceeded
 	}
 }
