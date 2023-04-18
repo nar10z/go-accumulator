@@ -177,11 +177,12 @@ func (a *accum[T]) flush(events []*eventExtend[T]) {
 
 	err := a.flushFunc(originalEvents)
 	for _, e := range events {
-		if e.fallback == nil || e.done.Load() {
+		isDone := e.done.Load()
+		e.done.Store(true)
+
+		if isDone || e.fallback == nil {
 			continue
 		}
-
-		e.done.Store(true)
 		e.fallback <- err
 	}
 }
