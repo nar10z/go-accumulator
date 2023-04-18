@@ -41,11 +41,10 @@ func NewAccumulator[T comparable](opts Opts[T]) (*accum[T], error) {
 	a := &accum[T]{
 		flushSize:     int(size),
 		flushInterval: interval,
+		flushFunc:     opts.FlushFunc,
 
 		chStop:   make(chan struct{}),
 		chEvents: make(chan *eventExtend[T], size),
-
-		flushFunc: opts.FlushFunc,
 	}
 
 	go a.startFlusher()
@@ -56,17 +55,17 @@ func NewAccumulator[T comparable](opts Opts[T]) (*accum[T], error) {
 type accum[T comparable] struct {
 	flushSize     int
 	flushInterval time.Duration
+	flushFunc     FlushExec[T]
 
 	chStop   chan struct{}
 	chEvents chan *eventExtend[T]
 
-	isClose   bool
-	flushFunc FlushExec[T]
+	isClose atomic.Bool
 }
 
 // AddAsync ...
 func (a *accum[T]) AddAsync(ctx context.Context, event T) error {
-	if a.isClose {
+	if a.isClose.Load() {
 		return ErrSendToClose
 	}
 
@@ -93,7 +92,7 @@ func (a *accum[T]) AddSync(ctx context.Context, event T) error {
 		e:        event,
 	}
 
-	if a.isClose {
+	if a.isClose.Load() {
 		return ErrSendToClose
 	}
 	a.chEvents <- e
@@ -109,7 +108,7 @@ func (a *accum[T]) AddSync(ctx context.Context, event T) error {
 
 // Stop ...
 func (a *accum[T]) Stop() {
-	a.isClose = true
+	a.isClose.Store(true)
 	close(a.chStop)
 	close(a.chEvents)
 }
