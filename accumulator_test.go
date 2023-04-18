@@ -17,16 +17,17 @@ func TestNewAccumulator(t *testing.T) {
 	defer cancel()
 
 	var (
-		countSyncEvents = 20
+		countSyncEvents = 200
 		countAsyncEvent = 10
 		summary         = 0
 	)
 
 	t.Run("#1", func(t *testing.T) {
 		acc, err := NewAccumulator(Opts[int]{
-			FlushSize:     10,
+			FlushSize:     100,
 			FlushInterval: time.Second,
 			FlushFunc: func(events []int) error {
+				time.Sleep(time.Second * 5)
 				summary += len(events)
 				return nil
 			},
@@ -46,6 +47,7 @@ func TestNewAccumulator(t *testing.T) {
 			wgEvents.Done()
 		}()
 
+		wgEvents.Add(1)
 		go func() {
 			for i := 0; i < countSyncEvents; i++ {
 				wgEvents.Add(1)
@@ -57,6 +59,7 @@ func TestNewAccumulator(t *testing.T) {
 					wgEvents.Done()
 				}()
 			}
+			wgEvents.Done()
 		}()
 
 		wgEvents.Wait()
