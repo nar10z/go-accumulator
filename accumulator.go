@@ -45,8 +45,10 @@ func NewAccumulator[T comparable](opts Opts[T]) (*accum[T], error) {
 
 		chStop:   make(chan struct{}),
 		chEvents: make(chan *eventExtend[T], size),
+		events:   newEventStorage[T](int(size)),
 	}
 
+	a.wgStop.Add(1)
 	go a.startFlusher()
 
 	return a, nil
@@ -57,10 +59,13 @@ type accum[T comparable] struct {
 	flushInterval time.Duration
 	flushFunc     FlushExec[T]
 
-	chStop   chan struct{}
-	chEvents chan *eventExtend[T]
+	chStop        chan struct{}
+	chEvents      chan *eventExtend[T]
+	counterEvents atomic.Int32
+	events        *eventStorage[T]
 
 	isClose atomic.Bool
+	wgStop  sync.WaitGroup
 }
 
 // AddAsync ...
@@ -73,6 +78,7 @@ func (a *accum[T]) AddAsync(ctx context.Context, event T) error {
 	case <-ctx.Done():
 		return context.DeadlineExceeded
 	default:
+		a.counterEvents.Add(1)
 		a.chEvents <- &eventExtend[T]{
 			e:    event,
 			done: atomic.Bool{},
@@ -95,6 +101,7 @@ func (a *accum[T]) AddSync(ctx context.Context, event T) error {
 	if a.isClose.Load() {
 		return ErrSendToClose
 	}
+	a.counterEvents.Add(1)
 	a.chEvents <- e
 
 	select {
@@ -111,59 +118,55 @@ func (a *accum[T]) Stop() {
 	if a.isClose.Load() {
 		return
 	}
-
 	a.isClose.Store(true)
-	close(a.chStop)
+
+	for a.counterEvents.Load() > 0 {
+		time.Sleep(time.Microsecond)
+	}
 	close(a.chEvents)
+
+	a.chStop <- struct{}{}
+	a.wgStop.Wait()
+	close(a.chStop)
 }
 
 func (a *accum[T]) startFlusher() {
+	defer a.wgStop.Done()
+
 	flushTicker := time.NewTicker(a.flushInterval)
 	defer flushTicker.Stop()
 
-	wg := sync.WaitGroup{}
-	events := newEventStorage[T](a.flushSize)
-	chSizeTrigger := make(chan struct{})
+	for {
+		select {
+		case e, ok := <-a.chEvents:
+			if !ok {
+				a.chEvents = nil
+				continue
+			}
 
-	wg.Add(1)
-	go func() {
-		for e := range a.chEvents {
+			a.counterEvents.Add(-1)
+
 			// skip finished event (context.DeadlineExceeded)
 			if e.done.Load() {
 				continue
 			}
 
-			if events.put(e) < a.flushSize {
+			if a.events.put(e) < a.flushSize {
 				continue
 			}
 
-			chSizeTrigger <- struct{}{}
+			a.flush(a.events.get())
+			flushTicker.Reset(a.flushInterval)
+
+		case <-flushTicker.C:
+			a.flush(a.events.get())
+
+		case <-a.chStop:
+			a.flush(a.events.get())
+
+			return
 		}
-		wg.Done()
-	}()
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
-		for {
-			select {
-			case <-chSizeTrigger:
-				a.flush(events.get())
-				flushTicker.Reset(a.flushInterval)
-
-			case <-flushTicker.C:
-				a.flush(events.get())
-
-			case <-a.chStop:
-				a.flush(events.get())
-				return
-			}
-		}
-	}()
-
-	wg.Wait()
-
+	}
 }
 
 func (a *accum[T]) flush(events []*eventExtend[T]) {

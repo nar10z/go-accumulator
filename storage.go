@@ -25,16 +25,9 @@ func (s *eventStorage[T]) put(e *eventExtend[T]) int {
 }
 
 func (s *eventStorage[T]) get() []*eventExtend[T] {
-	size := s.size
-
 	s.mu.Lock()
-	if len(s.events) < size {
-		size = len(s.events)
-	}
-
-	data := s.events[:size]
-	s.events = s.events[size:]
+	data := s.events
+	s.events = s.events[:0]
 	s.mu.Unlock()
-
 	return data
 }
