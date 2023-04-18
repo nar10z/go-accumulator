@@ -108,6 +108,10 @@ func (a *accum[T]) AddSync(ctx context.Context, event T) error {
 
 // Stop ...
 func (a *accum[T]) Stop() {
+	if a.isClose.Load() {
+		return
+	}
+
 	a.isClose.Store(true)
 	close(a.chStop)
 	close(a.chEvents)
