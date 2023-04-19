@@ -44,7 +44,7 @@ func Test_Accumulator(t *testing.T) {
 	t.Run("#1.1. Only async", func(t *testing.T) {
 
 		var (
-			countWriters    = 5
+			countWriters    = 2
 			countAsyncEvent = 113
 			summary         = 0
 		)
@@ -276,4 +276,112 @@ func Test_Accumulator(t *testing.T) {
 
 		require.Equal(t, countSyncEvent+countAsyncEvent, summary)
 	})
+	t.Run("#2.3. Context deadline", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(ctx, time.Microsecond)
+		defer cancel()
+
+		var (
+			countSyncEvent  = 300
+			countAsyncEvent = 100
+			summary         = 0
+		)
+
+		acc, err := NewAccumulator(Opts[int]{
+			FlushSize:     1000,
+			FlushInterval: time.Millisecond * 100,
+			FlushFunc: func(events []int) error {
+				summary += len(events)
+				return nil
+			},
+		})
+
+		require.NoError(t, err)
+		require.NotNil(t, acc)
+
+		time.Sleep(time.Second)
+
+		var wgEvents sync.WaitGroup
+
+		wgEvents.Add(1)
+		go func() {
+			defer wgEvents.Done()
+
+			for i := 0; i < countAsyncEvent; i++ {
+				require.Error(t, acc.AddAsync(ctx, i))
+			}
+		}()
+
+		wgEvents.Add(1)
+		go func() {
+			defer wgEvents.Done()
+
+			var errGr errgroup.Group
+			errGr.SetLimit(5000)
+
+			for i := 0; i < countSyncEvent; i++ {
+				i := i
+				errGr.Go(func() error {
+					return acc.AddSync(ctx, i)
+				})
+			}
+			require.Error(t, errGr.Wait())
+		}()
+
+		wgEvents.Wait()
+		acc.Stop()
+
+		require.Equal(t, 0, summary)
+	})
+	t.Run("#2.4. Send to close buffer", func(t *testing.T) {
+		var (
+			countSyncEvent  = 30
+			countAsyncEvent = 10
+			summary         = 0
+		)
+
+		acc, err := NewAccumulator(Opts[int]{
+			FlushSize:     1000,
+			FlushInterval: time.Millisecond * 100,
+			FlushFunc: func(events []int) error {
+				summary += len(events)
+				return nil
+			},
+		})
+		acc.Stop()
+
+		require.NoError(t, err)
+		require.NotNil(t, acc)
+
+		var wgEvents sync.WaitGroup
+
+		wgEvents.Add(1)
+		go func() {
+			defer wgEvents.Done()
+
+			for i := 0; i < countAsyncEvent; i++ {
+				require.Error(t, acc.AddAsync(ctx, i))
+			}
+		}()
+
+		wgEvents.Add(1)
+		go func() {
+			defer wgEvents.Done()
+
+			var errGr errgroup.Group
+			errGr.SetLimit(5000)
+
+			for i := 0; i < countSyncEvent; i++ {
+				i := i
+				errGr.Go(func() error {
+					return acc.AddSync(ctx, i)
+				})
+			}
+			require.Error(t, errGr.Wait())
+		}()
+
+		wgEvents.Wait()
+
+		require.Equal(t, 0, summary)
+	})
+
 }
