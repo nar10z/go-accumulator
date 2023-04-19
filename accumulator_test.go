@@ -383,5 +383,4 @@ func Test_Accumulator(t *testing.T) {
 
 		require.Equal(t, 0, summary)
 	})
-
 }

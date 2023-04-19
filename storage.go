@@ -1,33 +1,40 @@
 package go_events_accumulator
 
-import "sync"
-
-type eventStorage[T comparable] struct {
-	size   int
-	events []*eventExtend[T]
-	mu     sync.Mutex
-}
+import (
+	"sync"
+)
 
 func newEventStorage[T comparable](size int) *eventStorage[T] {
 	return &eventStorage[T]{
 		size:   size,
-		events: make([]*eventExtend[T], 0, size),
+		events: make(chan *eventExtend[T], size),
 		mu:     sync.Mutex{},
 	}
 }
 
+type eventStorage[T comparable] struct {
+	size   int
+	events chan *eventExtend[T]
+	mu     sync.Mutex
+}
+
 func (s *eventStorage[T]) put(e *eventExtend[T]) int {
-	s.mu.Lock()
-	s.events = append(s.events, e)
+	//s.mu.Lock()
+	s.events <- e
 	l := len(s.events)
-	s.mu.Unlock()
+	//s.mu.Unlock()
 	return l
 }
 
 func (s *eventStorage[T]) get() []*eventExtend[T] {
-	s.mu.Lock()
-	data := s.events
-	s.events = s.events[:0]
-	s.mu.Unlock()
+	data := make([]*eventExtend[T], 0, s.size)
+
+	//s.mu.Lock()
+	l := len(s.events)
+	for i := 0; i < l; i++ {
+		data = append(data, <-s.events)
+	}
+	//s.mu.Unlock()
+
 	return data
 }
