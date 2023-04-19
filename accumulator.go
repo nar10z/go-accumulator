@@ -161,7 +161,7 @@ func (a *accum[T]) startFlusher() {
 				continue
 			}
 
-			if events.put(e) < a.flushSize {
+			if events.put(e) {
 				continue
 			}
 

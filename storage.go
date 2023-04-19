@@ -18,23 +18,17 @@ type eventStorage[T comparable] struct {
 	mu     sync.Mutex
 }
 
-func (s *eventStorage[T]) put(e *eventExtend[T]) int {
-	//s.mu.Lock()
+func (s *eventStorage[T]) put(e *eventExtend[T]) bool {
 	s.events <- e
-	l := len(s.events)
-	//s.mu.Unlock()
-	return l
+	return len(s.events) < s.size
 }
 
 func (s *eventStorage[T]) get() []*eventExtend[T] {
 	data := make([]*eventExtend[T], 0, s.size)
-
-	//s.mu.Lock()
 	l := len(s.events)
 	for i := 0; i < l; i++ {
 		data = append(data, <-s.events)
 	}
-	//s.mu.Unlock()
 
 	return data
 }
