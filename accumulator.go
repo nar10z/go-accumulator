@@ -2,6 +2,7 @@ package go_events_accumulator
 
 import (
 	"context"
+	"go-events-accumulator/storage"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -15,35 +16,32 @@ const (
 // FlushExec - a function to call when an action needs to be performed
 type FlushExec[T comparable] func(events []T) error
 
-// Opts ...
-type Opts[T comparable] struct {
-	FlushSize     uint
-	FlushInterval time.Duration
-	FlushFunc     FlushExec[T]
-}
-
 // NewAccumulator ...
-func NewAccumulator[T comparable](opts Opts[T]) (*accum[T], error) {
-	size := opts.FlushSize
+func NewAccumulator[T comparable](
+	flushSize uint,
+	flushInterval time.Duration,
+	flushFunc FlushExec[T],
+) (*accum[T], error) {
+	size := flushSize
 	if size == 0 {
 		size = defaultFlushSize
 	}
 
-	interval := opts.FlushInterval
+	interval := flushInterval
 	if interval == 0 {
 		interval = defaultFlushInterval
 	}
 
-	if opts.FlushFunc == nil {
+	if flushFunc == nil {
 		return nil, ErrNilFlushFunc
 	}
 
 	a := &accum[T]{
 		flushSize:     int(size),
 		flushInterval: interval,
-		flushFunc:     opts.FlushFunc,
+		flushFunc:     flushFunc,
 
-		chEvents: make(chan *eventExtend[T], size),
+		chEvents: make(chan *extend[T], size),
 	}
 
 	a.wgStop.Add(1)
@@ -57,7 +55,7 @@ type accum[T comparable] struct {
 	flushInterval time.Duration
 	flushFunc     FlushExec[T]
 
-	chEvents      chan *eventExtend[T]
+	chEvents      chan *extend[T]
 	wgCountEvents sync.WaitGroup
 
 	isClose atomic.Bool
@@ -81,7 +79,7 @@ func (a *accum[T]) AddAsync(ctx context.Context, event T) error {
 	}
 
 	a.wgCountEvents.Add(1)
-	a.chEvents <- &eventExtend[T]{
+	a.chEvents <- &extend[T]{
 		e:    event,
 		done: atomic.Bool{},
 	}
@@ -108,7 +106,7 @@ func (a *accum[T]) AddSync(ctx context.Context, event T) error {
 
 	}
 
-	e := &eventExtend[T]{
+	e := &extend[T]{
 		fallback: ch,
 		e:        event,
 	}
@@ -143,14 +141,14 @@ func (a *accum[T]) startFlusher() {
 	flushTicker := time.NewTicker(a.flushInterval)
 	defer flushTicker.Stop()
 
-	events := newEventStorage[T](a.flushSize)
+	events := storage.NewEventStorage[*extend[T]](a.flushSize)
 
 	for {
 		select {
 		case e, ok := <-a.chEvents:
 			if !ok {
 				a.chEvents = nil
-				a.flush(events.get())
+				a.flush(events.Get())
 				return
 			}
 
@@ -161,20 +159,20 @@ func (a *accum[T]) startFlusher() {
 				continue
 			}
 
-			if events.put(e) {
+			if events.Put(e) {
 				continue
 			}
 
-			a.flush(events.get())
+			a.flush(events.Get())
 			flushTicker.Reset(a.flushInterval)
 
 		case <-flushTicker.C:
-			a.flush(events.get())
+			a.flush(events.Get())
 		}
 	}
 }
 
-func (a *accum[T]) flush(events []*eventExtend[T]) {
+func (a *accum[T]) flush(events []*extend[T]) {
 	if len(events) == 0 {
 		return
 	}

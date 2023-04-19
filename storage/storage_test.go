@@ -1,4 +1,4 @@
-package go_events_accumulator
+package storage
 
 import (
 	"fmt"
@@ -13,14 +13,12 @@ func Test_newEventStorage(t *testing.T) {
 	t.Run("#1. One", func(t *testing.T) {
 		t.Parallel()
 
-		stor := newEventStorage[int](10)
-		allowed := stor.put(&eventExtend[int]{
-			e: 1,
-		})
+		stor := NewEventStorage[int](10)
+		allowed := stor.Put(1)
 
 		require.True(t, allowed)
 
-		data := stor.get()
+		data := stor.Get()
 		require.NotEmpty(t, data)
 		require.Len(t, data, 1)
 	})
@@ -31,15 +29,15 @@ func Test_newEventStorage(t *testing.T) {
 			size = 1000
 			n    = 1_000_000
 		)
-		stor := newEventStorage[int](size)
+		stor := NewEventStorage[int](size)
 		sum := 0
 
 		for i := 0; i < n; i++ {
-			if !stor.put(&eventExtend[int]{e: i}) {
-				sum += len(stor.get())
+			if !stor.Put(i) {
+				sum += len(stor.Get())
 			}
 		}
-		sum += len(stor.get())
+		sum += len(stor.Get())
 
 		require.Equal(t, sum, n)
 	})
@@ -50,16 +48,16 @@ func BenchmarkStorage(b *testing.B) {
 
 	b.ResetTimer()
 	b.Run("#1.", func(b *testing.B) {
-		stor := newEventStorage[int](size)
+		stor := NewEventStorage[int](size)
 		sum := 0
 
 		for i := 0; i < b.N; i++ {
-			if !stor.put(&eventExtend[int]{e: i}) {
-				sum += len(stor.get())
+			if !stor.Put(i) {
+				sum += len(stor.Get())
 			}
 		}
 
-		sum += len(stor.get())
+		sum += len(stor.Get())
 		if sum != b.N {
 			fmt.Printf("got=%d, want=%d", sum, b.N)
 			b.Fail()

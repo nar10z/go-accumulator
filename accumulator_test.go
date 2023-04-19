@@ -15,17 +15,13 @@ func Test_NewAccumulator(t *testing.T) {
 	t.Parallel()
 
 	t.Run("#1. Failed", func(t *testing.T) {
-		acc, err := NewAccumulator(Opts[int]{})
+		acc, err := NewAccumulator[int](0, 0, nil)
 
 		require.Error(t, err)
 		assert.Nil(t, acc)
 	})
 	t.Run("#2. Success", func(t *testing.T) {
-		acc, err := NewAccumulator(Opts[int]{
-			FlushSize:     10,
-			FlushInterval: time.Millisecond * 20,
-			FlushFunc:     func(events []int) error { return nil },
-		})
+		acc, err := NewAccumulator[int](10, time.Millisecond*20, func(events []int) error { return nil })
 
 		require.NoError(t, err)
 		require.NotNil(t, acc)
@@ -49,14 +45,10 @@ func Test_Accumulator(t *testing.T) {
 			summary         = 0
 		)
 
-		acc, err := NewAccumulator(Opts[int]{
-			FlushSize:     100,
-			FlushInterval: time.Millisecond * 50,
-			FlushFunc: func(events []int) error {
-				time.Sleep(time.Millisecond)
-				summary += len(events)
-				return nil
-			},
+		acc, err := NewAccumulator(100, time.Millisecond*50, func(events []int) error {
+			time.Sleep(time.Millisecond)
+			summary += len(events)
+			return nil
 		})
 
 		require.NoError(t, err)
@@ -88,14 +80,10 @@ func Test_Accumulator(t *testing.T) {
 			summary        = 0
 		)
 
-		acc, err := NewAccumulator(Opts[int]{
-			FlushSize:     1000,
-			FlushInterval: time.Millisecond * 100,
-			FlushFunc: func(events []int) error {
-				time.Sleep(time.Millisecond)
-				summary += len(events)
-				return nil
-			},
+		acc, err := NewAccumulator(100, time.Millisecond*100, func(events []int) error {
+			time.Sleep(time.Millisecond)
+			summary += len(events)
+			return nil
 		})
 
 		require.NoError(t, err)
@@ -124,14 +112,10 @@ func Test_Accumulator(t *testing.T) {
 			summary         = 0
 		)
 
-		acc, err := NewAccumulator(Opts[int]{
-			FlushSize:     1000,
-			FlushInterval: time.Millisecond * 100,
-			FlushFunc: func(events []int) error {
-				time.Sleep(time.Millisecond)
-				summary += len(events)
-				return nil
-			},
+		acc, err := NewAccumulator(1000, time.Millisecond*100, func(events []int) error {
+			time.Sleep(time.Millisecond)
+			summary += len(events)
+			return nil
 		})
 
 		require.NoError(t, err)
@@ -178,14 +162,10 @@ func Test_Accumulator(t *testing.T) {
 			summary         = 0
 		)
 
-		acc, err := NewAccumulator(Opts[int]{
-			FlushSize:     1000,
-			FlushInterval: time.Minute * 10,
-			FlushFunc: func(events []int) error {
-				time.Sleep(time.Millisecond)
-				summary += len(events)
-				return nil
-			},
+		acc, err := NewAccumulator(1000, time.Minute*10, func(events []int) error {
+			time.Sleep(time.Millisecond)
+			summary += len(events)
+			return nil
 		})
 
 		require.NoError(t, err)
@@ -231,14 +211,10 @@ func Test_Accumulator(t *testing.T) {
 			summary         = 0
 		)
 
-		acc, err := NewAccumulator(Opts[int]{
-			FlushSize:     1000000,
-			FlushInterval: time.Millisecond * 50,
-			FlushFunc: func(events []int) error {
-				time.Sleep(time.Millisecond)
-				summary += len(events)
-				return nil
-			},
+		acc, err := NewAccumulator(1000000, time.Millisecond*50, func(events []int) error {
+			time.Sleep(time.Millisecond)
+			summary += len(events)
+			return nil
 		})
 
 		require.NoError(t, err)
@@ -286,13 +262,9 @@ func Test_Accumulator(t *testing.T) {
 			summary         = 0
 		)
 
-		acc, err := NewAccumulator(Opts[int]{
-			FlushSize:     1000,
-			FlushInterval: time.Millisecond * 100,
-			FlushFunc: func(events []int) error {
-				summary += len(events)
-				return nil
-			},
+		acc, err := NewAccumulator(1000, time.Millisecond*100, func(events []int) error {
+			summary += len(events)
+			return nil
 		})
 
 		require.NoError(t, err)
@@ -339,13 +311,9 @@ func Test_Accumulator(t *testing.T) {
 			summary         = 0
 		)
 
-		acc, err := NewAccumulator(Opts[int]{
-			FlushSize:     1000,
-			FlushInterval: time.Millisecond * 100,
-			FlushFunc: func(events []int) error {
-				summary += len(events)
-				return nil
-			},
+		acc, err := NewAccumulator(1000, time.Millisecond*100, func(events []int) error {
+			summary += len(events)
+			return nil
 		})
 		acc.Stop()
 
