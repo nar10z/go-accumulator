@@ -2,6 +2,7 @@ package storage
 
 import (
 	"fmt"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -46,20 +47,27 @@ func Test_newEventStorage(t *testing.T) {
 func BenchmarkStorage(b *testing.B) {
 	const size = 100
 
+	type A struct {
+		s string
+		i int
+	}
+
 	b.ResetTimer()
 	b.Run("#1.", func(b *testing.B) {
-		stor := NewEventStorage[int](size)
+		stor := NewEventStorage[*A](size)
 		sum := 0
 
 		for i := 0; i < b.N; i++ {
-			if !stor.Put(i) {
+			s := strconv.FormatInt(int64(i), 10)
+
+			if !stor.Put(&A{s: s, i: i}) {
 				sum += len(stor.Get())
 			}
 		}
 
 		sum += len(stor.Get())
 		if sum != b.N {
-			fmt.Printf("got=%d, want=%d", sum, b.N)
+			fmt.Printf("got=%d, want=%d\n", sum, b.N)
 			b.Fail()
 		}
 	})
