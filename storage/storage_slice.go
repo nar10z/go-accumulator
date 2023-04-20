@@ -10,6 +10,7 @@ import (
 	"sync"
 )
 
+// NewStorageSlice creates a new storage that uses the slice
 func NewStorageSlice[T comparable](size int) *storageSlice[T] {
 	return &storageSlice[T]{
 		size:   size,

@@ -20,7 +20,7 @@ const (
 	defaultFlushInterval = time.Second * 5
 )
 
-// New создает новый накопитель
+// New creates a new data collector with default storage (Channel)
 func New[T comparable](
 	flushSize uint,
 	flushInterval time.Duration,
@@ -29,7 +29,7 @@ func New[T comparable](
 	return NewWithStorage(flushSize, flushInterval, flushFunc, Channel)
 }
 
-// NewWithStorage ...
+// NewWithStorage creates a new data collector with the specified storage
 func NewWithStorage[T comparable](
 	flushSize uint,
 	flushInterval time.Duration,
@@ -76,7 +76,6 @@ type collector[T comparable] struct {
 	wgStop  sync.WaitGroup
 }
 
-// AddAsync ...
 func (c *collector[T]) AddAsync(ctx context.Context, event T) error {
 	if c.isClose.Load() {
 		return ErrSendToClose
@@ -101,7 +100,6 @@ func (c *collector[T]) AddAsync(ctx context.Context, event T) error {
 	return nil
 }
 
-// AddSync ...
 func (c *collector[T]) AddSync(ctx context.Context, event T) error {
 	if c.isClose.Load() {
 		return ErrSendToClose
@@ -136,7 +134,6 @@ func (c *collector[T]) AddSync(ctx context.Context, event T) error {
 	}
 }
 
-// Stop ...
 func (c *collector[T]) Stop() {
 	if c.isClose.Load() {
 		return
@@ -161,6 +158,8 @@ func (c *collector[T]) startFlusher(st StorageType) {
 		events = storage.NewStorageChannel[*eventExtended[T]](c.flushSize)
 	case GodsList:
 		events = storage.NewStorageSinglyList[*eventExtended[T]](c.flushSize)
+	case Slice:
+		events = storage.NewStorageSlice[*eventExtended[T]](c.flushSize)
 	default:
 		events = storage.NewStorageList[*eventExtended[T]](c.flushSize)
 	}

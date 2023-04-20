@@ -11,6 +11,7 @@ import (
 	"sync"
 )
 
+// NewStorageList creates a new storage that uses the container/list
 func NewStorageList[T comparable](size int) *storageList[T] {
 	return &storageList[T]{
 		size:   size,

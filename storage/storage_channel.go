@@ -10,6 +10,7 @@ import (
 	"sync"
 )
 
+// NewStorageChannel creates a new storage that uses the channel
 func NewStorageChannel[T comparable](size int) *storageChannel[T] {
 	return &storageChannel[T]{
 		size:   size,

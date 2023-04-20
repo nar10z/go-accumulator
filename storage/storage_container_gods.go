@@ -12,6 +12,7 @@ import (
 	sll "github.com/emirpasic/gods/lists/singlylinkedlist"
 )
 
+// NewStorageSinglyList creates a new storage that uses the github.com/emirpasic/gods/lists/singlylinkedlist
 func NewStorageSinglyList[T comparable](size int) *storageSinglyList[T] {
 	return &storageSinglyList[T]{
 		size:   size,
