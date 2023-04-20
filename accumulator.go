@@ -147,7 +147,7 @@ func (a *accum[T]) startFlusher() {
 	flushTicker := time.NewTicker(a.flushInterval)
 	defer flushTicker.Stop()
 
-	events := storage.NewEventStorage[*extend[T]](a.flushSize)
+	events := storage.NewStorageChannel[*extend[T]](a.flushSize)
 
 	for {
 		select {

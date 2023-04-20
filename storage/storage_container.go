@@ -11,8 +11,8 @@ import (
 	"sync"
 )
 
-func NewEventStorage2[T comparable](size int) *eventStorage2[T] {
-	return &eventStorage2[T]{
+func NewStorageList[T comparable](size int) *storageList[T] {
+	return &storageList[T]{
 		size:   size,
 		events: list.New(),
 		data: sync.Pool{New: func() any {
@@ -22,14 +22,14 @@ func NewEventStorage2[T comparable](size int) *eventStorage2[T] {
 	}
 }
 
-type eventStorage2[T comparable] struct {
+type storageList[T comparable] struct {
 	size   int
 	events *list.List
 	data   sync.Pool
 	mu     sync.Mutex
 }
 
-func (s *eventStorage2[T]) Put(e T) bool {
+func (s *storageList[T]) Put(e T) bool {
 	s.mu.Lock()
 	s.events.PushBack(e)
 	l := s.events.Len()
@@ -37,7 +37,7 @@ func (s *eventStorage2[T]) Put(e T) bool {
 	return l < s.size
 }
 
-func (s *eventStorage2[T]) Get() []T {
+func (s *storageList[T]) Get() []T {
 	dataPool := s.data.Get()
 	data, _ := dataPool.([]T)
 

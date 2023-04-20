@@ -18,7 +18,7 @@ func Test_newEventStorage(t *testing.T) {
 	t.Run("#1. One", func(t *testing.T) {
 		t.Parallel()
 
-		stor := NewEventStorage2[int](10)
+		stor := NewStorageList[int](10)
 		allowed := stor.Put(1)
 
 		require.True(t, allowed)
@@ -34,7 +34,7 @@ func Test_newEventStorage(t *testing.T) {
 			size = 1000
 			n    = 1_000_000
 		)
-		stor := NewEventStorage2[int](size)
+		stor := NewStorageList[int](size)
 		sum := 0
 
 		for i := 0; i < n; i++ {

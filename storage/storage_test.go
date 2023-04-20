@@ -22,7 +22,7 @@ func BenchmarkStorage(b *testing.B) {
 
 	b.ResetTimer()
 	b.Run("#1. Channel", func(b *testing.B) {
-		stor := NewEventStorage[*A](size)
+		stor := NewStorageChannel[*A](size)
 		sum := 0
 
 		for i := 0; i < b.N; i++ {
@@ -40,7 +40,7 @@ func BenchmarkStorage(b *testing.B) {
 		}
 	})
 	b.Run("#2. container/list", func(b *testing.B) {
-		stor := NewEventStorage2[*A](size)
+		stor := NewStorageList[*A](size)
 		sum := 0
 
 		for i := 0; i < b.N; i++ {
@@ -58,7 +58,7 @@ func BenchmarkStorage(b *testing.B) {
 		}
 	})
 	b.Run("#3. gods/singlylinkedlist", func(b *testing.B) {
-		stor := NewEventStorage3[*A](size)
+		stor := NewStorageSinglyList[*A](size)
 		sum := 0
 
 		for i := 0; i < b.N; i++ {
@@ -76,7 +76,7 @@ func BenchmarkStorage(b *testing.B) {
 		}
 	})
 	b.Run("#4. slice", func(b *testing.B) {
-		stor := NewEventStorage4[*A](size)
+		stor := NewStorageSlice[*A](size)
 		sum := 0
 
 		for i := 0; i < b.N; i++ {

@@ -12,8 +12,8 @@ import (
 	sll "github.com/emirpasic/gods/lists/singlylinkedlist"
 )
 
-func NewEventStorage3[T comparable](size int) *eventStorage3[T] {
-	return &eventStorage3[T]{
+func NewStorageSinglyList[T comparable](size int) *storageSinglyList[T] {
+	return &storageSinglyList[T]{
 		size:   size,
 		events: sll.New(),
 		data: sync.Pool{New: func() any {
@@ -23,14 +23,14 @@ func NewEventStorage3[T comparable](size int) *eventStorage3[T] {
 	}
 }
 
-type eventStorage3[T comparable] struct {
+type storageSinglyList[T comparable] struct {
 	size   int
 	events *sll.List
 	data   sync.Pool
 	mu     sync.Mutex
 }
 
-func (s *eventStorage3[T]) Put(e T) bool {
+func (s *storageSinglyList[T]) Put(e T) bool {
 	s.mu.Lock()
 	s.events.Add(e)
 	l := s.events.Size()
@@ -38,7 +38,7 @@ func (s *eventStorage3[T]) Put(e T) bool {
 	return l < s.size
 }
 
-func (s *eventStorage3[T]) Get() []T {
+func (s *storageSinglyList[T]) Get() []T {
 	dataPool := s.data.Get()
 	data, _ := dataPool.([]T)
 

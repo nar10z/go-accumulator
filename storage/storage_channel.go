@@ -10,8 +10,8 @@ import (
 	"sync"
 )
 
-func NewEventStorage[T comparable](size int) *eventStorage[T] {
-	return &eventStorage[T]{
+func NewStorageChannel[T comparable](size int) *storageChannel[T] {
+	return &storageChannel[T]{
 		size:   size,
 		events: make(chan T, size),
 		data: sync.Pool{New: func() any {
@@ -21,18 +21,18 @@ func NewEventStorage[T comparable](size int) *eventStorage[T] {
 	}
 }
 
-type eventStorage[T comparable] struct {
+type storageChannel[T comparable] struct {
 	size   int
 	events chan T
 	data   sync.Pool
 }
 
-func (s *eventStorage[T]) Put(e T) bool {
+func (s *storageChannel[T]) Put(e T) bool {
 	s.events <- e
 	return len(s.events) < s.size
 }
 
-func (s *eventStorage[T]) Get() []T {
+func (s *storageChannel[T]) Get() []T {
 	dataPool := s.data.Get()
 	data, _ := dataPool.([]T)
 
