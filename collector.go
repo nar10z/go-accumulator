@@ -4,14 +4,15 @@
  * Developed thanks to Nikita Terentyev (nar10z). Use it for good, and let your code work without problems!
  */
 
-package go_events_accumulator
+package go_collector
 
 import (
 	"context"
-	"go-events-accumulator/storage"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/nar10z/go-collector/storage"
 )
 
 const (
@@ -24,7 +25,7 @@ func New[T comparable](
 	flushSize uint,
 	flushInterval time.Duration,
 	flushFunc FlushExec[T],
-) (Accumulator[T], error) {
+) (Collector[T], error) {
 	return NewWithStorage(flushSize, flushInterval, flushFunc, Channel)
 }
 
@@ -34,7 +35,7 @@ func NewWithStorage[T comparable](
 	flushInterval time.Duration,
 	flushFunc FlushExec[T],
 	st StorageType,
-) (Accumulator[T], error) {
+) (Collector[T], error) {
 	size := flushSize
 	if size == 0 {
 		size = defaultFlushSize
@@ -49,7 +50,7 @@ func NewWithStorage[T comparable](
 		return nil, ErrNilFlushFunc
 	}
 
-	a := &accum[T]{
+	a := &collector[T]{
 		flushSize:     int(size),
 		flushInterval: interval,
 		flushFunc:     flushFunc,
@@ -63,21 +64,21 @@ func NewWithStorage[T comparable](
 	return a, nil
 }
 
-type accum[T comparable] struct {
+type collector[T comparable] struct {
 	flushSize     int
 	flushInterval time.Duration
 	flushFunc     FlushExec[T]
 
-	chEvents      chan *eventExtended[T]
-	wgCountEvents sync.WaitGroup
+	chEvents     chan *eventExtended[T]
+	wgAddCounter sync.WaitGroup
 
 	isClose atomic.Bool
 	wgStop  sync.WaitGroup
 }
 
 // AddAsync ...
-func (a *accum[T]) AddAsync(ctx context.Context, event T) error {
-	if a.isClose.Load() {
+func (c *collector[T]) AddAsync(ctx context.Context, event T) error {
+	if c.isClose.Load() {
 		return ErrSendToClose
 	}
 
@@ -91,8 +92,8 @@ func (a *accum[T]) AddAsync(ctx context.Context, event T) error {
 
 	}
 
-	a.wgCountEvents.Add(1)
-	a.chEvents <- &eventExtended[T]{
+	c.wgAddCounter.Add(1)
+	c.chEvents <- &eventExtended[T]{
 		e:    event,
 		done: atomic.Bool{},
 	}
@@ -101,8 +102,8 @@ func (a *accum[T]) AddAsync(ctx context.Context, event T) error {
 }
 
 // AddSync ...
-func (a *accum[T]) AddSync(ctx context.Context, event T) error {
-	if a.isClose.Load() {
+func (c *collector[T]) AddSync(ctx context.Context, event T) error {
+	if c.isClose.Load() {
 		return ErrSendToClose
 	}
 
@@ -123,8 +124,8 @@ func (a *accum[T]) AddSync(ctx context.Context, event T) error {
 		fallback: ch,
 		e:        event,
 	}
-	a.wgCountEvents.Add(1)
-	a.chEvents <- e
+	c.wgAddCounter.Add(1)
+	c.chEvents <- e
 
 	select {
 	case err := <-ch:
@@ -136,44 +137,44 @@ func (a *accum[T]) AddSync(ctx context.Context, event T) error {
 }
 
 // Stop ...
-func (a *accum[T]) Stop() {
-	if a.isClose.Load() {
+func (c *collector[T]) Stop() {
+	if c.isClose.Load() {
 		return
 	}
-	a.isClose.Store(true)
+	c.isClose.Store(true)
 
-	a.wgCountEvents.Wait()
-	close(a.chEvents)
+	c.wgAddCounter.Wait()
+	close(c.chEvents)
 
-	a.wgStop.Wait()
+	c.wgStop.Wait()
 }
 
-func (a *accum[T]) startFlusher(st StorageType) {
-	defer a.wgStop.Done()
+func (c *collector[T]) startFlusher(st StorageType) {
+	defer c.wgStop.Done()
 
-	flushTicker := time.NewTicker(a.flushInterval)
+	flushTicker := time.NewTicker(c.flushInterval)
 	defer flushTicker.Stop()
 
 	var events iStorage[T]
 	switch st {
 	case Channel:
-		events = storage.NewStorageChannel[*eventExtended[T]](a.flushSize)
+		events = storage.NewStorageChannel[*eventExtended[T]](c.flushSize)
 	case GodsList:
-		events = storage.NewStorageSinglyList[*eventExtended[T]](a.flushSize)
+		events = storage.NewStorageSinglyList[*eventExtended[T]](c.flushSize)
 	default:
-		events = storage.NewStorageList[*eventExtended[T]](a.flushSize)
+		events = storage.NewStorageList[*eventExtended[T]](c.flushSize)
 	}
 
 	for {
 		select {
-		case e, ok := <-a.chEvents:
+		case e, ok := <-c.chEvents:
 			if !ok {
-				a.chEvents = nil
-				a.flush(events.Get())
+				c.chEvents = nil
+				c.flush(events.Get())
 				return
 			}
 
-			a.wgCountEvents.Done()
+			c.wgAddCounter.Done()
 
 			// skip finished event (context.DeadlineExceeded)
 			if e.done.Load() {
@@ -184,16 +185,16 @@ func (a *accum[T]) startFlusher(st StorageType) {
 				continue
 			}
 
-			a.flush(events.Get())
-			flushTicker.Reset(a.flushInterval)
+			c.flush(events.Get())
+			flushTicker.Reset(c.flushInterval)
 
 		case <-flushTicker.C:
-			a.flush(events.Get())
+			c.flush(events.Get())
 		}
 	}
 }
 
-func (a *accum[T]) flush(events []*eventExtended[T]) {
+func (c *collector[T]) flush(events []*eventExtended[T]) {
 	if len(events) == 0 {
 		return
 	}
@@ -203,7 +204,7 @@ func (a *accum[T]) flush(events []*eventExtended[T]) {
 		originalEvents = append(originalEvents, e.e)
 	}
 
-	err := a.flushFunc(originalEvents)
+	err := c.flushFunc(originalEvents)
 	for _, e := range events {
 		isDone := e.done.Load()
 		e.done.Store(true)

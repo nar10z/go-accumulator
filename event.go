@@ -4,7 +4,7 @@
  * Developed thanks to Nikita Terentyev (nar10z). Use it for good, and let your code work without problems!
  */
 
-package go_events_accumulator
+package go_collector
 
 import "sync/atomic"
 

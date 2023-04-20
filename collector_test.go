@@ -4,7 +4,7 @@
  * Developed thanks to Nikita Terentyev (nar10z). Use it for good, and let your code work without problems!
  */
 
-package go_events_accumulator
+package go_collector
 
 import (
 	"context"
@@ -17,27 +17,30 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func Test_NewAccumulator(t *testing.T) {
+func Test_New(t *testing.T) {
 	t.Parallel()
 
 	t.Run("#1. Failed", func(t *testing.T) {
-		acc, err := New[int](0, 0, nil)
+		coll, err := New[int](0, 0, nil)
 
 		require.Error(t, err)
-		assert.Nil(t, acc)
+		assert.Nil(t, coll)
 	})
 	t.Run("#2. Success", func(t *testing.T) {
-		acc, err := New[int](10, time.Millisecond*20, func(events []int) error { return nil })
+		coll, err := New[int](10, time.Millisecond*20, func(events []int) error { return nil })
 
 		require.NoError(t, err)
-		require.NotNil(t, acc)
+		require.NotNil(t, coll)
 
-		acc.Stop()
-		require.True(t, acc.isClose.Load())
+		coll.Stop()
+		col, ok := coll.(*collector[int])
+		require.True(t, ok)
+		require.NotNil(t, col)
+		require.True(t, col.isClose.Load())
 	})
 }
 
-func Test_Accumulator(t *testing.T) {
+func Test_Collector(t *testing.T) {
 	t.Parallel()
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
@@ -51,14 +54,14 @@ func Test_Accumulator(t *testing.T) {
 			summary         = 0
 		)
 
-		acc, err := New(100, time.Millisecond*50, func(events []int) error {
+		coll, err := New(100, time.Millisecond*50, func(events []int) error {
 			time.Sleep(time.Millisecond)
 			summary += len(events)
 			return nil
 		})
 
 		require.NoError(t, err)
-		require.NotNil(t, acc)
+		require.NotNil(t, coll)
 
 		var wgEvents sync.WaitGroup
 
@@ -68,14 +71,14 @@ func Test_Accumulator(t *testing.T) {
 				defer wgEvents.Done()
 
 				for i := 0; i < countAsyncEvent; i++ {
-					require.NoError(t, acc.AddAsync(ctx, i))
+					require.NoError(t, coll.AddAsync(ctx, i))
 				}
 			}()
 		}
 
 		wgEvents.Wait()
 
-		acc.Stop()
+		coll.Stop()
 
 		require.Equal(t, countAsyncEvent*countWriters, summary)
 	})
@@ -86,14 +89,14 @@ func Test_Accumulator(t *testing.T) {
 			summary        = 0
 		)
 
-		acc, err := New(100, time.Millisecond*100, func(events []int) error {
+		coll, err := New(100, time.Millisecond*100, func(events []int) error {
 			time.Sleep(time.Millisecond)
 			summary += len(events)
 			return nil
 		})
 
 		require.NoError(t, err)
-		require.NotNil(t, acc)
+		require.NotNil(t, coll)
 
 		var errGr errgroup.Group
 		errGr.SetLimit(5000)
@@ -101,12 +104,12 @@ func Test_Accumulator(t *testing.T) {
 		for i := 0; i < countSyncEvent; i++ {
 			i := i
 			errGr.Go(func() error {
-				return acc.AddSync(ctx, i)
+				return coll.AddSync(ctx, i)
 			})
 		}
 		require.NoError(t, errGr.Wait())
 
-		acc.Stop()
+		coll.Stop()
 
 		require.Equal(t, countSyncEvent, summary)
 	})
@@ -118,14 +121,14 @@ func Test_Accumulator(t *testing.T) {
 			summary         = 0
 		)
 
-		acc, err := New(1000, time.Millisecond*100, func(events []int) error {
+		coll, err := New(1000, time.Millisecond*100, func(events []int) error {
 			time.Sleep(time.Millisecond)
 			summary += len(events)
 			return nil
 		})
 
 		require.NoError(t, err)
-		require.NotNil(t, acc)
+		require.NotNil(t, coll)
 
 		var wgEvents sync.WaitGroup
 
@@ -134,7 +137,7 @@ func Test_Accumulator(t *testing.T) {
 			defer wgEvents.Done()
 
 			for i := 0; i < countAsyncEvent; i++ {
-				require.NoError(t, acc.AddAsync(ctx, i))
+				require.NoError(t, coll.AddAsync(ctx, i))
 			}
 		}()
 
@@ -148,14 +151,14 @@ func Test_Accumulator(t *testing.T) {
 			for i := 0; i < countSyncEvent; i++ {
 				i := i
 				errGr.Go(func() error {
-					return acc.AddSync(ctx, i)
+					return coll.AddSync(ctx, i)
 				})
 			}
 			require.NoError(t, errGr.Wait())
 		}()
 
 		wgEvents.Wait()
-		acc.Stop()
+		coll.Stop()
 
 		require.Equal(t, countSyncEvent+countAsyncEvent, summary)
 	})
@@ -168,14 +171,14 @@ func Test_Accumulator(t *testing.T) {
 			summary         = 0
 		)
 
-		acc, err := New(1000, time.Minute*10, func(events []int) error {
+		coll, err := New(1000, time.Minute*10, func(events []int) error {
 			time.Sleep(time.Millisecond)
 			summary += len(events)
 			return nil
 		})
 
 		require.NoError(t, err)
-		require.NotNil(t, acc)
+		require.NotNil(t, coll)
 
 		var wgEvents sync.WaitGroup
 
@@ -184,7 +187,7 @@ func Test_Accumulator(t *testing.T) {
 			defer wgEvents.Done()
 
 			for i := 0; i < countAsyncEvent; i++ {
-				require.NoError(t, acc.AddAsync(ctx, i))
+				require.NoError(t, coll.AddAsync(ctx, i))
 			}
 		}()
 
@@ -198,14 +201,14 @@ func Test_Accumulator(t *testing.T) {
 			for i := 0; i < countSyncEvent; i++ {
 				i := i
 				errGr.Go(func() error {
-					return acc.AddSync(ctx, i)
+					return coll.AddSync(ctx, i)
 				})
 			}
 			require.NoError(t, errGr.Wait())
 		}()
 
 		wgEvents.Wait()
-		acc.Stop()
+		coll.Stop()
 
 		require.Equal(t, countSyncEvent+countAsyncEvent, summary)
 	})
@@ -217,14 +220,14 @@ func Test_Accumulator(t *testing.T) {
 			summary         = 0
 		)
 
-		acc, err := New(1000000, time.Millisecond*50, func(events []int) error {
+		coll, err := New(1000000, time.Millisecond*50, func(events []int) error {
 			time.Sleep(time.Millisecond)
 			summary += len(events)
 			return nil
 		})
 
 		require.NoError(t, err)
-		require.NotNil(t, acc)
+		require.NotNil(t, coll)
 
 		var wgEvents sync.WaitGroup
 
@@ -233,7 +236,7 @@ func Test_Accumulator(t *testing.T) {
 			defer wgEvents.Done()
 
 			for i := 0; i < countAsyncEvent; i++ {
-				require.NoError(t, acc.AddAsync(ctx, i))
+				require.NoError(t, coll.AddAsync(ctx, i))
 			}
 		}()
 
@@ -247,14 +250,14 @@ func Test_Accumulator(t *testing.T) {
 			for i := 0; i < countSyncEvent; i++ {
 				i := i
 				errGr.Go(func() error {
-					return acc.AddSync(ctx, i)
+					return coll.AddSync(ctx, i)
 				})
 			}
 			require.NoError(t, errGr.Wait())
 		}()
 
 		wgEvents.Wait()
-		acc.Stop()
+		coll.Stop()
 
 		require.Equal(t, countSyncEvent+countAsyncEvent, summary)
 	})
@@ -268,13 +271,13 @@ func Test_Accumulator(t *testing.T) {
 			summary         = 0
 		)
 
-		acc, err := New(1000, time.Millisecond*100, func(events []int) error {
+		coll, err := New(1000, time.Millisecond*100, func(events []int) error {
 			summary += len(events)
 			return nil
 		})
 
 		require.NoError(t, err)
-		require.NotNil(t, acc)
+		require.NotNil(t, coll)
 
 		time.Sleep(time.Second)
 
@@ -285,7 +288,7 @@ func Test_Accumulator(t *testing.T) {
 			defer wgEvents.Done()
 
 			for i := 0; i < countAsyncEvent; i++ {
-				require.Error(t, acc.AddAsync(ctx, i))
+				require.Error(t, coll.AddAsync(ctx, i))
 			}
 		}()
 
@@ -299,14 +302,14 @@ func Test_Accumulator(t *testing.T) {
 			for i := 0; i < countSyncEvent; i++ {
 				i := i
 				errGr.Go(func() error {
-					return acc.AddSync(ctx, i)
+					return coll.AddSync(ctx, i)
 				})
 			}
 			require.Error(t, errGr.Wait())
 		}()
 
 		wgEvents.Wait()
-		acc.Stop()
+		coll.Stop()
 
 		require.Equal(t, 0, summary)
 	})
@@ -317,14 +320,14 @@ func Test_Accumulator(t *testing.T) {
 			summary         = 0
 		)
 
-		acc, err := New(1000, time.Millisecond*100, func(events []int) error {
+		coll, err := New(1000, time.Millisecond*100, func(events []int) error {
 			summary += len(events)
 			return nil
 		})
-		acc.Stop()
+		coll.Stop()
 
 		require.NoError(t, err)
-		require.NotNil(t, acc)
+		require.NotNil(t, coll)
 
 		var wgEvents sync.WaitGroup
 
@@ -333,7 +336,7 @@ func Test_Accumulator(t *testing.T) {
 			defer wgEvents.Done()
 
 			for i := 0; i < countAsyncEvent; i++ {
-				require.Error(t, acc.AddAsync(ctx, i))
+				require.Error(t, coll.AddAsync(ctx, i))
 			}
 		}()
 
@@ -347,7 +350,7 @@ func Test_Accumulator(t *testing.T) {
 			for i := 0; i < countSyncEvent; i++ {
 				i := i
 				errGr.Go(func() error {
-					return acc.AddSync(ctx, i)
+					return coll.AddSync(ctx, i)
 				})
 			}
 			require.Error(t, errGr.Wait())

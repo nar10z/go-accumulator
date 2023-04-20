@@ -1,4 +1,4 @@
-module go-events-accumulator
+module github.com/nar10z/go-collector
 
 go 1.20
 

@@ -1,4 +1,4 @@
-package go_events_accumulator
+package go_collector
 
 import "context"
 
@@ -18,8 +18,9 @@ type iStorage[T comparable] interface {
 	Get() []*eventExtended[T]
 }
 
-// Accumulator ...
-type Accumulator[T comparable] interface {
+// Collector ...
+type Collector[T comparable] interface {
 	AddAsync(ctx context.Context, event T) error
 	AddSync(ctx context.Context, event T) error
+	Stop()
 }
