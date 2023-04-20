@@ -12,9 +12,6 @@ go get github.com/nar10z/go-collector
 
 ## What for?
 
----
-
-
 Sometimes there is a situation where processing data on 1 item is too long.
 The [go-collector](https://github.com/nar10z/go-collector) package comes to the rescue!
 
@@ -25,8 +22,6 @@ function (**flushFunc**) is called:
 - The interval during which the data is accumulated (**flushInterval**) passes
 
 ## Example
-
----
 
 ```go
 package main
@@ -121,5 +116,3 @@ Finish
 ## License
 
 [MIT](https://raw.githubusercontent.com/nar10z/go-collector/main/LICENSE)
-
-***
