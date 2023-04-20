@@ -114,6 +114,6 @@ Finish
 
 ## License
 
-[MIT](https://github.com/charmbracelet/bubbletea/raw/master/LICENSE)
+[MIT](https://raw.githubusercontent.com/nar10z/go-collector/main/LICENSE)
 
 ***
