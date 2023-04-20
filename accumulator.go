@@ -19,28 +19,12 @@ const (
 	defaultFlushInterval = time.Second * 5
 )
 
-type StorageType int
-
-const (
-	Channel StorageType = iota
-	List
-	GodsList
-)
-
-type iStorage[T comparable] interface {
-	Put(e *eventExtended[T]) bool
-	Get() []*eventExtended[T]
-}
-
-// FlushExec - a function to call when an action needs to be performed
-type FlushExec[T comparable] func(events []T) error
-
-// New ...
+// New создает новый накопитель
 func New[T comparable](
 	flushSize uint,
 	flushInterval time.Duration,
 	flushFunc FlushExec[T],
-) (*accum[T], error) {
+) (Accumulator[T], error) {
 	return NewWithStorage(flushSize, flushInterval, flushFunc, Channel)
 }
 
@@ -50,7 +34,7 @@ func NewWithStorage[T comparable](
 	flushInterval time.Duration,
 	flushFunc FlushExec[T],
 	st StorageType,
-) (*accum[T], error) {
+) (Accumulator[T], error) {
 	size := flushSize
 	if size == 0 {
 		size = defaultFlushSize
