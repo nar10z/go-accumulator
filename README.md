@@ -1,8 +1,14 @@
 # go-collector
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/nar10z/go-collector.svg)](https://pkg.go.dev/github.com/nar10z/go-collector)
+
 Solution for accumulation of events and their subsequent processing.
 
 <img alt="Logo" height="450" src="./image.png" title="Logo"/>
+
+```
+go get github.com/nar10z/go-collector
+```
 
 ## What for?
 
