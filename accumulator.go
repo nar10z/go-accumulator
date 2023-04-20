@@ -19,14 +19,37 @@ const (
 	defaultFlushInterval = time.Second * 5
 )
 
+type StorageType int
+
+const (
+	Channel StorageType = iota
+	List
+	GodsList
+)
+
+type iStorage[T comparable] interface {
+	Put(e *eventExtended[T]) bool
+	Get() []*eventExtended[T]
+}
+
 // FlushExec - a function to call when an action needs to be performed
 type FlushExec[T comparable] func(events []T) error
 
-// NewAccumulator ...
-func NewAccumulator[T comparable](
+// New ...
+func New[T comparable](
 	flushSize uint,
 	flushInterval time.Duration,
 	flushFunc FlushExec[T],
+) (*accum[T], error) {
+	return NewWithStorage(flushSize, flushInterval, flushFunc, Channel)
+}
+
+// NewWithStorage ...
+func NewWithStorage[T comparable](
+	flushSize uint,
+	flushInterval time.Duration,
+	flushFunc FlushExec[T],
+	st StorageType,
 ) (*accum[T], error) {
 	size := flushSize
 	if size == 0 {
@@ -47,11 +70,11 @@ func NewAccumulator[T comparable](
 		flushInterval: interval,
 		flushFunc:     flushFunc,
 
-		chEvents: make(chan *extend[T], size),
+		chEvents: make(chan *eventExtended[T], size),
 	}
 
 	a.wgStop.Add(1)
-	go a.startFlusher()
+	go a.startFlusher(st)
 
 	return a, nil
 }
@@ -61,7 +84,7 @@ type accum[T comparable] struct {
 	flushInterval time.Duration
 	flushFunc     FlushExec[T]
 
-	chEvents      chan *extend[T]
+	chEvents      chan *eventExtended[T]
 	wgCountEvents sync.WaitGroup
 
 	isClose atomic.Bool
@@ -85,7 +108,7 @@ func (a *accum[T]) AddAsync(ctx context.Context, event T) error {
 	}
 
 	a.wgCountEvents.Add(1)
-	a.chEvents <- &extend[T]{
+	a.chEvents <- &eventExtended[T]{
 		e:    event,
 		done: atomic.Bool{},
 	}
@@ -112,7 +135,7 @@ func (a *accum[T]) AddSync(ctx context.Context, event T) error {
 
 	}
 
-	e := &extend[T]{
+	e := &eventExtended[T]{
 		fallback: ch,
 		e:        event,
 	}
@@ -141,13 +164,21 @@ func (a *accum[T]) Stop() {
 	a.wgStop.Wait()
 }
 
-func (a *accum[T]) startFlusher() {
+func (a *accum[T]) startFlusher(st StorageType) {
 	defer a.wgStop.Done()
 
 	flushTicker := time.NewTicker(a.flushInterval)
 	defer flushTicker.Stop()
 
-	events := storage.NewStorageChannel[*extend[T]](a.flushSize)
+	var events iStorage[T]
+	switch st {
+	case Channel:
+		events = storage.NewStorageChannel[*eventExtended[T]](a.flushSize)
+	case GodsList:
+		events = storage.NewStorageSinglyList[*eventExtended[T]](a.flushSize)
+	default:
+		events = storage.NewStorageList[*eventExtended[T]](a.flushSize)
+	}
 
 	for {
 		select {
@@ -178,7 +209,7 @@ func (a *accum[T]) startFlusher() {
 	}
 }
 
-func (a *accum[T]) flush(events []*extend[T]) {
+func (a *accum[T]) flush(events []*eventExtended[T]) {
 	if len(events) == 0 {
 		return
 	}

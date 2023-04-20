@@ -8,7 +8,7 @@ package go_events_accumulator
 
 import "sync/atomic"
 
-type extend[T comparable] struct {
+type eventExtended[T comparable] struct {
 	// return error of flush operation
 	fallback chan<- error
 	// original data
