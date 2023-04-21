@@ -2,7 +2,6 @@ package accumulator_example
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -39,7 +38,6 @@ func Benchmark_accum(b *testing.B) {
 
 		accumulator.Stop()
 
-		fmt.Printf("#1. summary=%d\n", summary)
 		if summary != b.N {
 			b.Fail()
 		}
@@ -59,7 +57,6 @@ func Benchmark_accum(b *testing.B) {
 
 		accumulator.Stop()
 
-		fmt.Printf("#1. summary=%d\n", summary)
 		if summary != b.N {
 			b.Fail()
 		}
@@ -79,7 +76,6 @@ func Benchmark_accum(b *testing.B) {
 
 		accumulator.Stop()
 
-		fmt.Printf("#1. summary=%d\n", summary)
 		if summary != b.N {
 			b.Fail()
 		}
@@ -99,7 +95,6 @@ func Benchmark_accum(b *testing.B) {
 
 		accumulator.Stop()
 
-		fmt.Printf("#1. summary=%d\n", summary)
 		if summary != b.N {
 			b.Fail()
 		}
@@ -123,7 +118,6 @@ func Benchmark_accum(b *testing.B) {
 			time.Sleep(time.Microsecond)
 		})
 
-		fmt.Printf("#2. summary=%d\n", summary)
 		if summary != b.N {
 			b.Fail()
 		}
