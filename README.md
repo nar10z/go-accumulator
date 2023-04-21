@@ -21,6 +21,11 @@ function (**flushFunc**) is called:
 - Storage fills up to the maximum value (**flushSize**).
 - The interval during which the data is accumulated (**flushInterval**) passes
 
+The accumulator provides 2 methods:
+
+- AddAsync - adding data without waiting for execution
+- AddSync - adding data with a wait for execution
+
 ## Example
 
 ```go
