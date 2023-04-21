@@ -192,6 +192,9 @@ func (c *collector[T]) flush(events []*eventExtended[T]) {
 
 	originalEvents := make([]T, 0, len(events))
 	for _, e := range events {
+		if e.done.Load() {
+			continue
+		}
 		originalEvents = append(originalEvents, e.e)
 	}
 
