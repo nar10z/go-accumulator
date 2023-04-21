@@ -13,8 +13,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"github.com/nar10z/go-collector/storage"
 )
 
 const (
@@ -56,12 +54,13 @@ func NewWithStorage[T comparable](
 		flushSize:     int(size),
 		flushInterval: interval,
 		flushFunc:     flushFunc,
+		storageType:   st,
 
 		chEvents: make(chan *eventExtended[T], size),
 	}
 
 	a.wgStop.Add(1)
-	go a.startFlusher(st)
+	go a.startFlusher()
 
 	return a, nil
 }
@@ -70,6 +69,7 @@ type collector[T comparable] struct {
 	flushSize     int
 	flushInterval time.Duration
 	flushFunc     FlushExec[T]
+	storageType   StorageType
 
 	chEvents     chan *eventExtended[T]
 	wgAddCounter sync.WaitGroup
@@ -148,23 +148,13 @@ func (c *collector[T]) Stop() {
 	c.wgStop.Wait()
 }
 
-func (c *collector[T]) startFlusher(st StorageType) {
+func (c *collector[T]) startFlusher() {
 	defer c.wgStop.Done()
 
 	flushTicker := time.NewTicker(c.flushInterval)
 	defer flushTicker.Stop()
 
-	var events iStorage[T]
-	switch st {
-	case Channel:
-		events = storage.NewStorageChannel[*eventExtended[T]](c.flushSize)
-	case GodsList:
-		events = storage.NewStorageSinglyList[*eventExtended[T]](c.flushSize)
-	case Slice:
-		events = storage.NewStorageSlice[*eventExtended[T]](c.flushSize)
-	default:
-		events = storage.NewStorageList[*eventExtended[T]](c.flushSize)
-	}
+	events := buildStorage[T](c.storageType, c.flushSize)
 
 	for {
 		select {
