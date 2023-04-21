@@ -1,4 +1,4 @@
-package collector_example
+package accumulator_example
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"time"
 
 	acc "github.com/lrweck/accumulator"
-	gocoll "github.com/nar10z/go-collector"
+	gocoll "github.com/nar10z/go-accumulator"
 )
 
 const (
@@ -24,80 +24,80 @@ func Benchmark_accum(b *testing.B) {
 	defer cancel()
 
 	b.ResetTimer()
-	b.Run("#1.1 go-collector, channel", func(b *testing.B) {
+	b.Run("#1.1 go-accumulator, channel", func(b *testing.B) {
 		summary := 0
 
-		collector, _ := gocoll.New[*Data](flushSize, flushInterval, func(events []*Data) error {
+		accumulator, _ := gocoll.New[*Data](flushSize, flushInterval, func(events []*Data) error {
 			summary += len(events)
 			time.Sleep(time.Microsecond)
 			return nil
 		})
 
 		for i := 0; i < b.N; i++ {
-			_ = collector.AddAsync(ctx, &Data{i: i})
+			_ = accumulator.AddAsync(ctx, &Data{i: i})
 		}
 
-		collector.Stop()
+		accumulator.Stop()
 
 		fmt.Printf("#1. summary=%d\n", summary)
 		if summary != b.N {
 			b.Fail()
 		}
 	})
-	b.Run("#1.2 go-collector, list", func(b *testing.B) {
+	b.Run("#1.2 go-accumulator, list", func(b *testing.B) {
 		summary := 0
 
-		collector, _ := gocoll.NewWithStorage[*Data](flushSize, flushInterval, func(events []*Data) error {
+		accumulator, _ := gocoll.NewWithStorage[*Data](flushSize, flushInterval, func(events []*Data) error {
 			summary += len(events)
 			time.Sleep(time.Microsecond)
 			return nil
 		}, gocoll.List)
 
 		for i := 0; i < b.N; i++ {
-			_ = collector.AddAsync(ctx, &Data{i: i})
+			_ = accumulator.AddAsync(ctx, &Data{i: i})
 		}
 
-		collector.Stop()
+		accumulator.Stop()
 
 		fmt.Printf("#1. summary=%d\n", summary)
 		if summary != b.N {
 			b.Fail()
 		}
 	})
-	b.Run("#1.3 go-collector, slice", func(b *testing.B) {
+	b.Run("#1.3 go-accumulator, slice", func(b *testing.B) {
 		summary := 0
 
-		collector, _ := gocoll.NewWithStorage[*Data](flushSize, flushInterval, func(events []*Data) error {
+		accumulator, _ := gocoll.NewWithStorage[*Data](flushSize, flushInterval, func(events []*Data) error {
 			summary += len(events)
 			time.Sleep(time.Microsecond)
 			return nil
 		}, gocoll.Slice)
 
 		for i := 0; i < b.N; i++ {
-			_ = collector.AddAsync(ctx, &Data{i: i})
+			_ = accumulator.AddAsync(ctx, &Data{i: i})
 		}
 
-		collector.Stop()
+		accumulator.Stop()
 
 		fmt.Printf("#1. summary=%d\n", summary)
 		if summary != b.N {
 			b.Fail()
 		}
 	})
-	b.Run("#1.4 go-collector, stdList", func(b *testing.B) {
+	b.Run("#1.4 go-accumulator, stdList", func(b *testing.B) {
 		summary := 0
 
-		collector, _ := gocoll.NewWithStorage[*Data](flushSize, flushInterval, func(events []*Data) error {
+		accumulator, _ := gocoll.NewWithStorage[*Data](flushSize, flushInterval, func(events []*Data) error {
 			summary += len(events)
 			time.Sleep(time.Microsecond)
 			return nil
 		}, gocoll.StdList)
 
 		for i := 0; i < b.N; i++ {
-			_ = collector.AddAsync(ctx, &Data{i: i})
+			_ = accumulator.AddAsync(ctx, &Data{i: i})
 		}
 
-		collector.Stop()
+		accumulator.Stop()
 
 		fmt.Printf("#1. summary=%d\n", summary)
 		if summary != b.N {

@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2023.
  *
- * License MIT (https://raw.githubusercontent.com/nar10z/go-collector/main/LICENSE)
+ * License MIT (https://raw.githubusercontent.com/nar10z/go-accumulator/main/LICENSE)
  *
  * Developed thanks to Nikita Terentyev (nar10z). Use it for good, and let your code work without problems!
  */
@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	gocoll "github.com/nar10z/go-collector"
+	gocoll "github.com/nar10z/go-accumulator"
 )
 
 func main() {
@@ -27,7 +27,7 @@ func main() {
 		countAsync = 3
 	)
 
-	collector, err := gocoll.New[string](3, time.Second, func(events []string) error {
+	accumulator, err := gocoll.New[string](3, time.Second, func(events []string) error {
 		fmt.Printf("Start flush %d events:\n", len(events))
 		for i, e := range events {
 			fmt.Printf(" - %d) %s\n", i+1, e)
@@ -46,7 +46,7 @@ func main() {
 
 	go func() {
 		for i := 0; i < countAsync; i++ {
-			errE := collector.AddAsync(ctx, fmt.Sprintf("async №%d", i))
+			errE := accumulator.AddAsync(ctx, fmt.Sprintf("async №%d", i))
 			if errE != nil {
 				fmt.Printf("failed add event: %v\n", errE)
 			}
@@ -60,7 +60,7 @@ func main() {
 			go func() {
 				defer wg.Done()
 
-				errE := collector.AddSync(ctx, fmt.Sprintf("sync №%d", i))
+				errE := accumulator.AddSync(ctx, fmt.Sprintf("sync №%d", i))
 				if errE != nil {
 					fmt.Printf("failed add event: %v\n", errE)
 				}
@@ -70,5 +70,5 @@ func main() {
 
 	wg.Wait()
 
-	collector.Stop()
+	accumulator.Stop()
 }

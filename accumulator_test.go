@@ -1,12 +1,12 @@
 /*
  * Copyright (c) 2023.
  *
- * License MIT (https://raw.githubusercontent.com/nar10z/go-collector/main/LICENSE)
+ * License MIT (https://raw.githubusercontent.com/nar10z/go-accumulator/main/LICENSE)
  *
  * Developed thanks to Nikita Terentyev (nar10z). Use it for good, and let your code work without problems!
  */
 
-package go_collector
+package go_accumulator
 
 import (
 	"context"
@@ -35,14 +35,14 @@ func Test_New(t *testing.T) {
 		require.NotNil(t, coll)
 
 		coll.Stop()
-		col, ok := coll.(*collector[int])
+		col, ok := coll.(*accumulator[int])
 		require.True(t, ok)
 		require.NotNil(t, col)
 		require.True(t, col.isClose.Load())
 	})
 }
 
-func Test_Collector(t *testing.T) {
+func Test_accumulator(t *testing.T) {
 	t.Parallel()
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)

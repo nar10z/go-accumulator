@@ -1,4 +1,4 @@
-module github.com/nar10z/go-collector
+module github.com/nar10z/go-accumulator
 
 go 1.20
 

@@ -1,12 +1,12 @@
 /*
  * Copyright (c) 2023.
  *
- * License MIT (https://raw.githubusercontent.com/nar10z/go-collector/main/LICENSE)
+ * License MIT (https://raw.githubusercontent.com/nar10z/go-accumulator/main/LICENSE)
  *
  * Developed thanks to Nikita Terentyev (nar10z). Use it for good, and let your code work without problems!
  */
 
-package go_collector
+package go_accumulator
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/nar10z/go-collector/storage"
+	"github.com/nar10z/go-accumulator/storage"
 )
 
 const (
@@ -22,22 +22,22 @@ const (
 	defaultFlushInterval = time.Second * 5
 )
 
-// New creates a new data collector with default storage (Channel)
+// New creates a new data accumulator with default storage (Channel)
 func New[T comparable](
 	flushSize uint,
 	flushInterval time.Duration,
 	flushFunc FlushExec[T],
-) (Collector[T], error) {
+) (Accumulator[T], error) {
 	return NewWithStorage(flushSize, flushInterval, flushFunc, Channel)
 }
 
-// NewWithStorage creates a new data collector with the specified storage
+// NewWithStorage creates a new data accumulator with the specified storage
 func NewWithStorage[T comparable](
 	flushSize uint,
 	flushInterval time.Duration,
 	flushFunc FlushExec[T],
 	st StorageType,
-) (Collector[T], error) {
+) (Accumulator[T], error) {
 	size := flushSize
 	if size == 0 {
 		size = defaultFlushSize
@@ -52,7 +52,7 @@ func NewWithStorage[T comparable](
 		return nil, ErrNilFlushFunc
 	}
 
-	a := &collector[T]{
+	a := &accumulator[T]{
 		flushFunc: flushFunc,
 		chEvents:  make(chan *eventExtended[T], size),
 	}
@@ -63,7 +63,7 @@ func NewWithStorage[T comparable](
 	return a, nil
 }
 
-type collector[T comparable] struct {
+type accumulator[T comparable] struct {
 	flushFunc FlushExec[T]
 
 	chEvents chan *eventExtended[T]
@@ -72,8 +72,8 @@ type collector[T comparable] struct {
 	wgStop  sync.WaitGroup
 }
 
-func (c *collector[T]) AddAsync(ctx context.Context, event T) error {
-	if c.isClose.Load() {
+func (a *accumulator[T]) AddAsync(ctx context.Context, event T) error {
+	if a.isClose.Load() {
 		return ErrSendToClose
 	}
 
@@ -84,13 +84,13 @@ func (c *collector[T]) AddAsync(ctx context.Context, event T) error {
 
 	}
 
-	c.chEvents <- &eventExtended[T]{e: event}
+	a.chEvents <- &eventExtended[T]{e: event}
 
 	return nil
 }
 
-func (c *collector[T]) AddSync(ctx context.Context, event T) error {
-	if c.isClose.Load() {
+func (a *accumulator[T]) AddSync(ctx context.Context, event T) error {
+	if a.isClose.Load() {
 		return ErrSendToClose
 	}
 
@@ -108,7 +108,7 @@ func (c *collector[T]) AddSync(ctx context.Context, event T) error {
 		fallback: ch,
 		e:        event,
 	}
-	c.chEvents <- e
+	a.chEvents <- e
 
 	select {
 	case err := <-ch:
@@ -119,19 +119,19 @@ func (c *collector[T]) AddSync(ctx context.Context, event T) error {
 	}
 }
 
-func (c *collector[T]) Stop() {
-	if c.isClose.Load() {
+func (a *accumulator[T]) Stop() {
+	if a.isClose.Load() {
 		return
 	}
-	c.isClose.Store(true)
+	a.isClose.Store(true)
 
-	close(c.chEvents)
+	close(a.chEvents)
 
-	c.wgStop.Wait()
+	a.wgStop.Wait()
 }
 
-func (c *collector[T]) startFlusher(storageType StorageType, flushSize int, flushInterval time.Duration) {
-	defer c.wgStop.Done()
+func (a *accumulator[T]) startFlusher(storageType StorageType, flushSize int, flushInterval time.Duration) {
+	defer a.wgStop.Done()
 
 	flushTicker := time.NewTicker(flushInterval)
 	defer flushTicker.Stop()
@@ -152,10 +152,10 @@ func (c *collector[T]) startFlusher(storageType StorageType, flushSize int, flus
 
 	for {
 		select {
-		case e, ok := <-c.chEvents:
+		case e, ok := <-a.chEvents:
 			if !ok {
-				c.chEvents = nil
-				c.flush(events.Get())
+				a.chEvents = nil
+				a.flush(events.Get())
 				return
 			}
 
@@ -168,16 +168,16 @@ func (c *collector[T]) startFlusher(storageType StorageType, flushSize int, flus
 				continue
 			}
 
-			c.flush(events.Get())
+			a.flush(events.Get())
 			flushTicker.Reset(flushInterval)
 
 		case <-flushTicker.C:
-			c.flush(events.Get())
+			a.flush(events.Get())
 		}
 	}
 }
 
-func (c *collector[T]) flush(events []*eventExtended[T]) {
+func (a *accumulator[T]) flush(events []*eventExtended[T]) {
 	if len(events) == 0 {
 		return
 	}
@@ -190,7 +190,7 @@ func (c *collector[T]) flush(events []*eventExtended[T]) {
 		originalEvents = append(originalEvents, e.e)
 	}
 
-	err := c.flushFunc(originalEvents)
+	err := a.flushFunc(originalEvents)
 	for _, e := range events {
 		isDone := e.done.Load()
 		e.done.Store(true)
