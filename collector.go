@@ -13,6 +13,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/nar10z/go-collector/storage"
 )
 
 const (
@@ -51,28 +53,20 @@ func NewWithStorage[T comparable](
 	}
 
 	a := &collector[T]{
-		flushSize:     int(size),
-		flushInterval: interval,
-		flushFunc:     flushFunc,
-		storageType:   st,
-
-		chEvents: make(chan *eventExtended[T], size),
+		flushFunc: flushFunc,
+		chEvents:  make(chan *eventExtended[T], size),
 	}
 
 	a.wgStop.Add(1)
-	go a.startFlusher()
+	go a.startFlusher(st, int(size), interval)
 
 	return a, nil
 }
 
 type collector[T comparable] struct {
-	flushSize     int
-	flushInterval time.Duration
-	flushFunc     FlushExec[T]
-	storageType   StorageType
+	flushFunc FlushExec[T]
 
-	chEvents     chan *eventExtended[T]
-	wgAddCounter sync.WaitGroup
+	chEvents chan *eventExtended[T]
 
 	isClose atomic.Bool
 	wgStop  sync.WaitGroup
@@ -83,21 +77,14 @@ func (c *collector[T]) AddAsync(ctx context.Context, event T) error {
 		return ErrSendToClose
 	}
 
-	selfCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
 	select {
-	case <-selfCtx.Done():
+	case <-ctx.Done():
 		return context.DeadlineExceeded
 	default:
 
 	}
 
-	c.wgAddCounter.Add(1)
-	c.chEvents <- &eventExtended[T]{
-		e:    event,
-		done: atomic.Bool{},
-	}
+	c.chEvents <- &eventExtended[T]{e: event}
 
 	return nil
 }
@@ -107,14 +94,11 @@ func (c *collector[T]) AddSync(ctx context.Context, event T) error {
 		return ErrSendToClose
 	}
 
-	selfCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
 	ch := make(chan error)
 	defer close(ch)
 
 	select {
-	case <-selfCtx.Done():
+	case <-ctx.Done():
 		return context.DeadlineExceeded
 	default:
 
@@ -124,13 +108,12 @@ func (c *collector[T]) AddSync(ctx context.Context, event T) error {
 		fallback: ch,
 		e:        event,
 	}
-	c.wgAddCounter.Add(1)
 	c.chEvents <- e
 
 	select {
 	case err := <-ch:
 		return err
-	case <-selfCtx.Done():
+	case <-ctx.Done():
 		e.done.Store(true)
 		return context.DeadlineExceeded
 	}
@@ -142,19 +125,30 @@ func (c *collector[T]) Stop() {
 	}
 	c.isClose.Store(true)
 
-	c.wgAddCounter.Wait()
 	close(c.chEvents)
 
 	c.wgStop.Wait()
 }
 
-func (c *collector[T]) startFlusher() {
+func (c *collector[T]) startFlusher(storageType StorageType, flushSize int, flushInterval time.Duration) {
 	defer c.wgStop.Done()
 
-	flushTicker := time.NewTicker(c.flushInterval)
+	flushTicker := time.NewTicker(flushInterval)
 	defer flushTicker.Stop()
 
-	events := buildStorage[T](c.storageType, c.flushSize)
+	var events iStorage[T]
+	switch storageType {
+	case Channel:
+		events = storage.NewStorageChannel[*eventExtended[T]](flushSize)
+	case List:
+		events = storage.NewStorageSinglyList[*eventExtended[T]](flushSize)
+	case Slice:
+		events = storage.NewStorageSlice[*eventExtended[T]](flushSize)
+	case StdList:
+		events = storage.NewStorageList[*eventExtended[T]](flushSize)
+	default:
+		events = storage.NewStorageChannel[*eventExtended[T]](flushSize)
+	}
 
 	for {
 		select {
@@ -164,8 +158,6 @@ func (c *collector[T]) startFlusher() {
 				c.flush(events.Get())
 				return
 			}
-
-			c.wgAddCounter.Done()
 
 			// skip finished event (context.DeadlineExceeded)
 			if e.done.Load() {
@@ -177,7 +169,7 @@ func (c *collector[T]) startFlusher() {
 			}
 
 			c.flush(events.Get())
-			flushTicker.Reset(c.flushInterval)
+			flushTicker.Reset(flushInterval)
 
 		case <-flushTicker.C:
 			c.flush(events.Get())
