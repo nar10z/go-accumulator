@@ -147,8 +147,20 @@ func (a *accumulator[T]) Stop() {
 func (a *accumulator[T]) startFlusher(flushInterval time.Duration) {
 	defer a.wgStop.Done()
 
-	flushTicker := time.NewTicker(flushInterval)
-	defer flushTicker.Stop()
+	ticker := make(chan struct{})
+	lock := atomic.Bool{}
+	tickerTick := func() {
+		if lock.Load() {
+			return
+		}
+
+		lock.Store(true)
+		go func() {
+			time.Sleep(flushInterval)
+			ticker <- struct{}{}
+			lock.Store(false)
+		}()
+	}
 
 	for {
 		select {
@@ -165,13 +177,12 @@ func (a *accumulator[T]) startFlusher(flushInterval time.Duration) {
 			}
 
 			if a.storage.Put(e) {
+				tickerTick()
 				continue
 			}
 
 			a.flush(a.storage.Get())
-			flushTicker.Reset(flushInterval)
-
-		case <-flushTicker.C:
+		case <-ticker:
 			a.flush(a.storage.Get())
 		}
 	}

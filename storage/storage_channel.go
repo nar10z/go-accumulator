@@ -26,8 +26,8 @@ func NewStorageChannel[T comparable](size int) *storageChannel[T] {
 
 type storageChannel[T comparable] struct {
 	maxSize int32
-	size    atomic.Int32
 	events  chan T
+	size    atomic.Int32
 	data    sync.Pool
 }
 
