@@ -10,44 +10,51 @@ package storage
 
 import (
 	"sync"
+	"sync/atomic"
 )
 
 // NewStorageSlice creates a new storage that uses the slice
-func NewStorageSlice[T comparable](size int) *storageSlice[T] {
-	return &storageSlice[T]{
-		size:   size,
-		events: make([]T, 0, size),
+func NewStorageSlice[T comparable](maxSize int) *storageSlice[T] {
+	s := &storageSlice[T]{
+		maxSize: int32(maxSize),
 		data: sync.Pool{New: func() any {
-			data := make([]T, 0, size)
-			return data
+			return make([]T, 0, maxSize)
 		}},
 	}
+	s.buildEvents()
+
+	return s
 }
 
 type storageSlice[T comparable] struct {
-	size   int
-	events []T
-	data   sync.Pool
-	mu     sync.Mutex
+	maxSize int32
+	events  []T
+	size    atomic.Int32
+	data    sync.Pool
+	mu      sync.Mutex
+}
+
+func (s *storageSlice[T]) buildEvents() {
+	s.events, _ = s.data.Get().([]T)
 }
 
 func (s *storageSlice[T]) Put(e T) bool {
 	s.mu.Lock()
 	s.events = append(s.events, e)
-	l := len(s.events)
 	s.mu.Unlock()
-	return l < s.size
+	return s.size.Add(1) < s.maxSize
 }
 
 func (s *storageSlice[T]) Get() []T {
-	dataPool := s.data.Get()
-	data, _ := dataPool.([]T)
-
 	s.mu.Lock()
-	data = s.events[:]
-	s.events = s.events[:0]
+	data := s.events[:]
+	s.events = nil
 	s.mu.Unlock()
-	s.data.Put(dataPool)
+
+	s.size.Store(0)
+
+	s.data.Put(s.events)
+	s.buildEvents()
 
 	return data
 }

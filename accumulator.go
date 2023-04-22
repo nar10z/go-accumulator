@@ -28,7 +28,7 @@ func New[T comparable](
 	flushInterval time.Duration,
 	flushFunc FlushExec[T],
 ) (Accumulator[T], error) {
-	return NewWithStorage(flushSize, flushInterval, flushFunc, Channel)
+	return NewWithStorage(flushSize, flushInterval, flushFunc, Slice)
 }
 
 // NewWithStorage creates a new data accumulator with the specified storage

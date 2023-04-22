@@ -41,7 +41,7 @@ func BenchmarkStorage(b *testing.B) {
 			b.Fail()
 		}
 	})
-	b.Run("#2. container/list", func(b *testing.B) {
+	b.Run("#2. list", func(b *testing.B) {
 		stor := NewStorageList[*A](size)
 		sum := 0
 
@@ -59,7 +59,7 @@ func BenchmarkStorage(b *testing.B) {
 			b.Fail()
 		}
 	})
-	b.Run("#3. gods/singlylinkedlist", func(b *testing.B) {
+	b.Run("#3. gods/list", func(b *testing.B) {
 		stor := NewStorageSinglyList[*A](size)
 		sum := 0
 
