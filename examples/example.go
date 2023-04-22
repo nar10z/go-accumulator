@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	gocoll "github.com/nar10z/go-accumulator"
+	goaccum "github.com/nar10z/go-accumulator"
 )
 
 func main() {
@@ -27,7 +27,7 @@ func main() {
 		countAsync = 3
 	)
 
-	accumulator, err := gocoll.New[string](3, time.Second, func(events []string) error {
+	accumulator, err := goaccum.New[string](3, time.Second, func(events []string) error {
 		fmt.Printf("Start flush %d events:\n", len(events))
 		for i, e := range events {
 			fmt.Printf(" - %d) %s\n", i+1, e)

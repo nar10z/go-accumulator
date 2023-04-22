@@ -6,11 +6,12 @@ import (
 	"time"
 
 	acc "github.com/lrweck/accumulator"
-	gocoll "github.com/nar10z/go-accumulator"
+	goaccum "github.com/nar10z/go-accumulator"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
-	flushSize     = 1000
+	flushSize     = 5000
 	flushInterval = time.Second
 )
 
@@ -22,11 +23,10 @@ func Benchmark_accum(b *testing.B) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	b.ResetTimer()
 	b.Run("#1.1 go-accumulator, channel", func(b *testing.B) {
 		summary := 0
 
-		accumulator, _ := gocoll.New[*Data](flushSize, flushInterval, func(events []*Data) error {
+		accumulator, _ := goaccum.New[*Data](flushSize, flushInterval, func(events []*Data) error {
 			summary += len(events)
 			time.Sleep(time.Microsecond)
 			return nil
@@ -45,11 +45,11 @@ func Benchmark_accum(b *testing.B) {
 	b.Run("#1.2 go-accumulator, list", func(b *testing.B) {
 		summary := 0
 
-		accumulator, _ := gocoll.NewWithStorage[*Data](flushSize, flushInterval, func(events []*Data) error {
+		accumulator, _ := goaccum.NewWithStorage[*Data](flushSize, flushInterval, func(events []*Data) error {
 			summary += len(events)
 			time.Sleep(time.Microsecond)
 			return nil
-		}, gocoll.List)
+		}, goaccum.List)
 
 		for i := 0; i < b.N; i++ {
 			_ = accumulator.AddAsync(ctx, &Data{i: i})
@@ -64,11 +64,11 @@ func Benchmark_accum(b *testing.B) {
 	b.Run("#1.3 go-accumulator, slice", func(b *testing.B) {
 		summary := 0
 
-		accumulator, _ := gocoll.NewWithStorage[*Data](flushSize, flushInterval, func(events []*Data) error {
+		accumulator, _ := goaccum.NewWithStorage[*Data](flushSize, flushInterval, func(events []*Data) error {
 			summary += len(events)
 			time.Sleep(time.Microsecond)
 			return nil
-		}, gocoll.Slice)
+		}, goaccum.Slice)
 
 		for i := 0; i < b.N; i++ {
 			_ = accumulator.AddAsync(ctx, &Data{i: i})
@@ -83,16 +83,40 @@ func Benchmark_accum(b *testing.B) {
 	b.Run("#1.4 go-accumulator, stdList", func(b *testing.B) {
 		summary := 0
 
-		accumulator, _ := gocoll.NewWithStorage[*Data](flushSize, flushInterval, func(events []*Data) error {
+		accumulator, _ := goaccum.NewWithStorage[*Data](flushSize, flushInterval, func(events []*Data) error {
 			summary += len(events)
 			time.Sleep(time.Microsecond)
 			return nil
-		}, gocoll.StdList)
+		}, goaccum.StdList)
 
 		for i := 0; i < b.N; i++ {
 			_ = accumulator.AddAsync(ctx, &Data{i: i})
 		}
 
+		accumulator.Stop()
+
+		if summary != b.N {
+			b.Fail()
+		}
+	})
+	b.Run("#1.5 go-accumulator, stdList sync", func(b *testing.B) {
+		summary := 0
+
+		accumulator, _ := goaccum.NewWithStorage[*Data](flushSize, flushInterval, func(events []*Data) error {
+			summary += len(events)
+			time.Sleep(time.Microsecond)
+			return nil
+		}, goaccum.StdList)
+
+		var errGr errgroup.Group
+		errGr.SetLimit(flushSize)
+		for i := 0; i < b.N; i++ {
+			errGr.Go(func() error {
+				return accumulator.AddSync(ctx, &Data{i: i})
+			})
+		}
+
+		_ = errGr.Wait()
 		accumulator.Stop()
 
 		if summary != b.N {
