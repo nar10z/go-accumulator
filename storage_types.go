@@ -12,10 +12,9 @@ package go_accumulator
 type StorageType int
 
 const (
-	// Channel storage using channels
-	Channel StorageType = iota
+
 	// List storage using github.com/emirpasic/gods
-	List
+	List StorageType = iota
 	// Slice storage using slice
 	Slice
 	// StdList storage using container/list

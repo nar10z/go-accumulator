@@ -64,8 +64,6 @@ func NewWithStorage[T comparable](
 		a.storage = storage.NewStorageSinglyList[*eventExtended[T]](int(size))
 	case StdList:
 		a.storage = storage.NewStorageList[*eventExtended[T]](int(size))
-	case Channel:
-		a.storage = storage.NewStorageChannel[*eventExtended[T]](int(size))
 	default:
 		return nil, ErrNotSetStorageType
 	}
