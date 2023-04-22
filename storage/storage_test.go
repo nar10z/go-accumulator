@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2023.
  *
- * License MIT (https://raw.githubusercontent.com/nar10z/go-collector/main/LICENSE)
+ * License MIT (https://raw.githubusercontent.com/nar10z/go-accumulator/main/LICENSE)
  *
  * Developed thanks to Nikita Terentyev (nar10z). Use it for good, and let your code work without problems!
  */
@@ -41,7 +41,7 @@ func BenchmarkStorage(b *testing.B) {
 			b.Fail()
 		}
 	})
-	b.Run("#2. container/list", func(b *testing.B) {
+	b.Run("#2. list", func(b *testing.B) {
 		stor := NewStorageList[*A](size)
 		sum := 0
 
@@ -59,7 +59,7 @@ func BenchmarkStorage(b *testing.B) {
 			b.Fail()
 		}
 	})
-	b.Run("#3. gods/singlylinkedlist", func(b *testing.B) {
+	b.Run("#3. gods/list", func(b *testing.B) {
 		stor := NewStorageSinglyList[*A](size)
 		sum := 0
 
