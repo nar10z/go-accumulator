@@ -31,11 +31,14 @@ func BenchmarkStorage(b *testing.B) {
 			s := strconv.FormatInt(int64(i), 10)
 
 			if !stor.Put(&A{s: s, i: i}) {
-				sum += len(stor.Get())
+				stor.Iterate(func(ee *A) {
+					sum++
+				})
+				stor.Clear()
 			}
 		}
 
-		sum += len(stor.Get())
+		sum += stor.Len()
 		if sum != b.N {
 			fmt.Printf("got=%d, want=%d\n", sum, b.N)
 			b.Fail()
@@ -49,11 +52,14 @@ func BenchmarkStorage(b *testing.B) {
 			s := strconv.FormatInt(int64(i), 10)
 
 			if !stor.Put(&A{s: s, i: i}) {
-				sum += len(stor.Get())
+				stor.Iterate(func(ee *A) {
+					sum++
+				})
+				stor.Clear()
 			}
 		}
 
-		sum += len(stor.Get())
+		sum += stor.Len()
 		if sum != b.N {
 			fmt.Printf("got=%d, want=%d\n", sum, b.N)
 			b.Fail()
@@ -67,11 +73,14 @@ func BenchmarkStorage(b *testing.B) {
 			s := strconv.FormatInt(int64(i), 10)
 
 			if !stor.Put(&A{s: s, i: i}) {
-				sum += len(stor.Get())
+				stor.Iterate(func(ee *A) {
+					sum++
+				})
+				stor.Clear()
 			}
 		}
 
-		sum += len(stor.Get())
+		sum += stor.Len()
 		if sum != b.N {
 			fmt.Printf("got=%d, want=%d\n", sum, b.N)
 			b.Fail()
@@ -85,11 +94,14 @@ func BenchmarkStorage(b *testing.B) {
 			s := strconv.FormatInt(int64(i), 10)
 
 			if !stor.Put(&A{s: s, i: i}) {
-				sum += len(stor.Get())
+				stor.Iterate(func(ee *A) {
+					sum++
+				})
+				stor.Clear()
 			}
 		}
 
-		sum += len(stor.Get())
+		sum += stor.Len()
 		if sum != b.N {
 			fmt.Printf("got=%d, want=%d\n", sum, b.N)
 			b.Fail()

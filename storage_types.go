@@ -24,5 +24,7 @@ const (
 
 type iStorage[T comparable] interface {
 	Put(e *eventExtended[T]) bool
-	Get() []*eventExtended[T]
+	Len() int
+	Iterate(func(ee *eventExtended[T]))
+	Clear()
 }

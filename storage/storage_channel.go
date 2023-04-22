@@ -36,15 +36,17 @@ func (s *storageChannel[T]) Put(e T) bool {
 	return s.size.Add(1) < s.maxSize
 }
 
-func (s *storageChannel[T]) Get() []T {
-	dataPool := s.data.Get()
-	data, _ := dataPool.([]T)
+func (s *storageChannel[T]) Len() int {
+	return int(s.size.Load())
+}
 
+func (s *storageChannel[T]) Iterate(f func(ee T)) {
 	l := int(s.size.Swap(0)) // fix chan maxSize
 	for i := 0; i < l; i++ {
-		data = append(data, <-s.events)
+		f(<-s.events)
 	}
-	s.data.Put(dataPool)
+}
 
-	return data
+func (s *storageChannel[T]) Clear() {
+
 }

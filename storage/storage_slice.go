@@ -17,9 +17,7 @@ import (
 func NewStorageSlice[T comparable](maxSize int) *storageSlice[T] {
 	s := &storageSlice[T]{
 		maxSize: int32(maxSize),
-		data: sync.Pool{New: func() any {
-			return make([]T, 0, maxSize)
-		}},
+		events:  make([]T, 0, maxSize),
 	}
 	s.buildEvents()
 
@@ -45,16 +43,24 @@ func (s *storageSlice[T]) Put(e T) bool {
 	return s.size.Add(1) < s.maxSize
 }
 
-func (s *storageSlice[T]) Get() []T {
+func (s *storageSlice[T]) Len() int {
+	return int(s.size.Load())
+}
+
+func (s *storageSlice[T]) Iterate(f func(ee T)) {
 	s.mu.Lock()
-	data := s.events[:]
-	s.events = nil
+	for _, event := range s.events {
+		f(event)
+	}
 	s.mu.Unlock()
+}
 
+func (s *storageSlice[T]) Clear() {
+	s.mu.Lock()
+	s.events = make([]T, 0, s.maxSize)
+	s.events = s.events[:0]
 	s.size.Store(0)
-
 	s.data.Put(s.events)
 	s.buildEvents()
-
-	return data
+	s.mu.Unlock()
 }

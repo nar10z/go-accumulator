@@ -28,7 +28,7 @@ func New[T comparable](
 	flushInterval time.Duration,
 	flushFunc FlushExec[T],
 ) (Accumulator[T], error) {
-	return NewWithStorage(flushSize, flushInterval, flushFunc, StdList)
+	return NewWithStorage(flushSize, flushInterval, flushFunc, Slice)
 }
 
 // NewWithStorage creates a new data accumulator with the specified storage
@@ -167,7 +167,7 @@ func (a *accumulator[T]) startFlusher(flushInterval time.Duration) {
 		case e, ok := <-a.chEvents:
 			if !ok {
 				a.chEvents = nil
-				a.flush(a.storage.Get())
+				a.flush()
 				return
 			}
 
@@ -181,34 +181,36 @@ func (a *accumulator[T]) startFlusher(flushInterval time.Duration) {
 				continue
 			}
 
-			a.flush(a.storage.Get())
+			a.flush()
 		case <-ticker:
-			a.flush(a.storage.Get())
+			a.flush()
 		}
 	}
 }
 
-func (a *accumulator[T]) flush(events []*eventExtended[T]) {
-	if len(events) == 0 {
+func (a *accumulator[T]) flush() {
+	l := a.storage.Len()
+	if l == 0 {
 		return
 	}
 
-	originalEvents := make([]T, 0, len(events))
-	for _, e := range events {
+	originalEvents := make([]T, 0, l)
+	a.storage.Iterate(func(e *eventExtended[T]) {
 		if e.done.Load() {
-			continue
+			return
 		}
 		originalEvents = append(originalEvents, e.e)
-	}
+	})
 
 	err := a.flushFunc(originalEvents)
-	for _, e := range events {
+	a.storage.Iterate(func(e *eventExtended[T]) {
 		isDone := e.done.Load()
 		e.done.Store(true)
 
 		if isDone || e.fallback == nil {
-			continue
+			return
 		}
 		e.fallback <- err
-	}
+	})
+	a.storage.Clear()
 }

@@ -41,17 +41,18 @@ func (s *storageSinglyList[T]) Put(e T) bool {
 	return l < s.size
 }
 
-func (s *storageSinglyList[T]) Get() []T {
-	dataPool := s.data.Get()
-	data, _ := dataPool.([]T)
+func (s *storageSinglyList[T]) Len() int {
+	return s.events.Size()
+}
 
+func (s *storageSinglyList[T]) Iterate(f func(ee T)) {
 	s.mu.Lock()
 	s.events.Each(func(_ int, temp any) {
-		data = append(data, temp.(T))
+		f(temp.(T))
 	})
-	s.events.Clear()
 	s.mu.Unlock()
-	s.data.Put(dataPool)
+}
 
-	return data
+func (s *storageSinglyList[T]) Clear() {
+	s.events.Clear()
 }

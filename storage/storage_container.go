@@ -40,17 +40,18 @@ func (s *storageList[T]) Put(e T) bool {
 	return l < s.size
 }
 
-func (s *storageList[T]) Get() []T {
-	dataPool := s.data.Get()
-	data, _ := dataPool.([]T)
+func (s *storageList[T]) Len() int {
+	return s.events.Len()
+}
 
+func (s *storageList[T]) Iterate(f func(ee T)) {
 	s.mu.Lock()
 	for temp := s.events.Front(); temp != nil; temp = temp.Next() {
-		data = append(data, temp.Value.(T))
+		f(temp.Value.(T))
 	}
-	s.events.Init()
 	s.mu.Unlock()
-	s.data.Put(dataPool)
+}
 
-	return data
+func (s *storageList[T]) Clear() {
+	s.events.Init()
 }
