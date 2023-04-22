@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	flushSize     = 5000
+	flushSize     = 10000
 	flushInterval = time.Second
 )
 

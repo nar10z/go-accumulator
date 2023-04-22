@@ -28,7 +28,7 @@ func New[T comparable](
 	flushInterval time.Duration,
 	flushFunc FlushExec[T],
 ) (Accumulator[T], error) {
-	return NewWithStorage(flushSize, flushInterval, flushFunc, Slice)
+	return NewWithStorage(flushSize, flushInterval, flushFunc, StdList)
 }
 
 // NewWithStorage creates a new data accumulator with the specified storage
@@ -57,8 +57,21 @@ func NewWithStorage[T comparable](
 		chEvents:  make(chan *eventExtended[T], size),
 	}
 
+	switch st {
+	case Slice:
+		a.storage = storage.NewStorageSlice[*eventExtended[T]](int(size))
+	case List:
+		a.storage = storage.NewStorageSinglyList[*eventExtended[T]](int(size))
+	case StdList:
+		a.storage = storage.NewStorageList[*eventExtended[T]](int(size))
+	case Channel:
+		a.storage = storage.NewStorageChannel[*eventExtended[T]](int(size))
+	default:
+		return nil, ErrNotSetStorageType
+	}
+
 	a.wgStop.Add(1)
-	go a.startFlusher(st, int(size), interval)
+	go a.startFlusher(interval)
 
 	return a, nil
 }
@@ -67,6 +80,7 @@ type accumulator[T comparable] struct {
 	flushFunc FlushExec[T]
 
 	chEvents chan *eventExtended[T]
+	storage  iStorage[T]
 
 	isClose atomic.Bool
 	wgStop  sync.WaitGroup
@@ -130,32 +144,18 @@ func (a *accumulator[T]) Stop() {
 	a.wgStop.Wait()
 }
 
-func (a *accumulator[T]) startFlusher(storageType StorageType, flushSize int, flushInterval time.Duration) {
+func (a *accumulator[T]) startFlusher(flushInterval time.Duration) {
 	defer a.wgStop.Done()
 
 	flushTicker := time.NewTicker(flushInterval)
 	defer flushTicker.Stop()
-
-	var events iStorage[T]
-	switch storageType {
-	case Channel:
-		events = storage.NewStorageChannel[*eventExtended[T]](flushSize)
-	case List:
-		events = storage.NewStorageSinglyList[*eventExtended[T]](flushSize)
-	case Slice:
-		events = storage.NewStorageSlice[*eventExtended[T]](flushSize)
-	case StdList:
-		events = storage.NewStorageList[*eventExtended[T]](flushSize)
-	default:
-		events = storage.NewStorageChannel[*eventExtended[T]](flushSize)
-	}
 
 	for {
 		select {
 		case e, ok := <-a.chEvents:
 			if !ok {
 				a.chEvents = nil
-				a.flush(events.Get())
+				a.flush(a.storage.Get())
 				return
 			}
 
@@ -164,15 +164,15 @@ func (a *accumulator[T]) startFlusher(storageType StorageType, flushSize int, fl
 				continue
 			}
 
-			if events.Put(e) {
+			if a.storage.Put(e) {
 				continue
 			}
 
-			a.flush(events.Get())
+			a.flush(a.storage.Get())
 			flushTicker.Reset(flushInterval)
 
 		case <-flushTicker.C:
-			a.flush(events.Get())
+			a.flush(a.storage.Get())
 		}
 	}
 }
