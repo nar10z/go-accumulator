@@ -54,7 +54,7 @@ func NewWithStorage[T comparable](
 
 	a := &accumulator[T]{
 		flushFunc: flushFunc,
-		chEvents:  make(chan *eventExtended[T], size),
+		chEvents:  make(chan *eventExtended[T]),
 	}
 
 	switch st {
