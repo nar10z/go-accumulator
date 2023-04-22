@@ -11,10 +11,9 @@ package go_accumulator
 import "sync/atomic"
 
 type eventExtended[T comparable] struct {
+	done atomic.Bool
 	// return error of flush operation
 	fallback chan<- error
 	// original data
 	e T
-
-	done atomic.Bool
 }
