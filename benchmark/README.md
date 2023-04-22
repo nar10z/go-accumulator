@@ -17,10 +17,10 @@ Benchmark_accum/#2._lrweck/accumulator-8             1000000	   132.4 ns/op	    
 goos: windows
 goarch: amd64
 
-Benchmark_accum/#1.1_go-accumulator,_channel-12            1000000       2799 ns/op       40 B/op       2 allocs/op
-Benchmark_accum/#1.2_go-accumulator,_list-12               1000000       2718 ns/op       64 B/op       3 allocs/op
-Benchmark_accum/#1.3_go-accumulator,_slice-12              1000000       2543 ns/op       40 B/op       2 allocs/op
-Benchmark_accum/#1.4_go-accumulator,_stdList-12            1000000       2496 ns/op       90 B/op       3 allocs/op
+Benchmark_accum/#1.1_go-accumulator,_channel-12            1000000       2799 ns/op        40 B/op       2 allocs/op
+Benchmark_accum/#1.2_go-accumulator,_list-12               1000000       2718 ns/op        64 B/op       3 allocs/op
+Benchmark_accum/#1.3_go-accumulator,_slice-12              1000000       2543 ns/op        40 B/op       2 allocs/op
+Benchmark_accum/#1.4_go-accumulator,_stdList-12            1000000       2496 ns/op        90 B/op       3 allocs/op
 
 Benchmark_accum/#2.1_go-accumulator,_channel_sync-12       1000000       3181 ns/op       219 B/op       5 allocs/op
 Benchmark_accum/#2.2_go-accumulator,_list_sync-12          1000000       3108 ns/op       241 B/op       6 allocs/op
