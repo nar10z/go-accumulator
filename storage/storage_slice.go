@@ -17,7 +17,6 @@ import (
 func NewStorageSlice[T comparable](maxSize int) *storageSlice[T] {
 	s := &storageSlice[T]{
 		maxSize: int32(maxSize),
-		events:  make([]T, 0, maxSize),
 	}
 	s.buildEvents()
 
@@ -57,7 +56,6 @@ func (s *storageSlice[T]) Iterate(f func(ee T)) {
 
 func (s *storageSlice[T]) Clear() {
 	s.mu.Lock()
-	s.events = make([]T, 0, s.maxSize)
 	s.events = s.events[:0]
 	s.size.Store(0)
 	s.data.Put(s.events)

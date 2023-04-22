@@ -9,7 +9,6 @@
 package storage
 
 import (
-	"sync"
 	"sync/atomic"
 )
 
@@ -17,10 +16,7 @@ import (
 func NewStorageChannel[T comparable](size int) *storageChannel[T] {
 	return &storageChannel[T]{
 		maxSize: int32(size),
-		events:  make(chan T, size),
-		data: sync.Pool{New: func() any {
-			return make([]T, 0, size)
-		}},
+		events:  make(chan T),
 	}
 }
 
@@ -28,7 +24,6 @@ type storageChannel[T comparable] struct {
 	maxSize int32
 	events  chan T
 	size    atomic.Int32
-	data    sync.Pool
 }
 
 func (s *storageChannel[T]) Put(e T) bool {

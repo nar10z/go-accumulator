@@ -18,17 +18,12 @@ func NewStorageList[T comparable](size int) *storageList[T] {
 	return &storageList[T]{
 		size:   size,
 		events: list.New(),
-		data: sync.Pool{New: func() any {
-			data := make([]T, 0, size)
-			return data
-		}},
 	}
 }
 
 type storageList[T comparable] struct {
 	size   int
 	events *list.List
-	data   sync.Pool
 	mu     sync.Mutex
 }
 
@@ -41,7 +36,10 @@ func (s *storageList[T]) Put(e T) bool {
 }
 
 func (s *storageList[T]) Len() int {
-	return s.events.Len()
+	s.mu.Lock()
+	l := s.events.Len()
+	s.mu.Unlock()
+	return l
 }
 
 func (s *storageList[T]) Iterate(f func(ee T)) {

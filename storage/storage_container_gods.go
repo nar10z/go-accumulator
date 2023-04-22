@@ -19,17 +19,12 @@ func NewStorageSinglyList[T comparable](size int) *storageSinglyList[T] {
 	return &storageSinglyList[T]{
 		size:   size,
 		events: sll.New(),
-		data: sync.Pool{New: func() any {
-			data := make([]T, 0, size)
-			return data
-		}},
 	}
 }
 
 type storageSinglyList[T comparable] struct {
 	size   int
 	events *sll.List
-	data   sync.Pool
 	mu     sync.Mutex
 }
 
@@ -42,7 +37,10 @@ func (s *storageSinglyList[T]) Put(e T) bool {
 }
 
 func (s *storageSinglyList[T]) Len() int {
-	return s.events.Size()
+	s.mu.Lock()
+	l := s.events.Size()
+	s.mu.Unlock()
+	return l
 }
 
 func (s *storageSinglyList[T]) Iterate(f func(ee T)) {
@@ -54,5 +52,7 @@ func (s *storageSinglyList[T]) Iterate(f func(ee T)) {
 }
 
 func (s *storageSinglyList[T]) Clear() {
+	s.mu.Lock()
 	s.events.Clear()
+	s.mu.Unlock()
 }
