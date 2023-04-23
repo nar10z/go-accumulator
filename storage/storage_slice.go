@@ -9,6 +9,7 @@
 package storage
 
 import (
+	"runtime"
 	"sync"
 	"sync/atomic"
 )
@@ -17,6 +18,7 @@ import (
 func NewStorageSlice[T comparable](maxSize int) *storageSlice[T] {
 	s := &storageSlice[T]{
 		maxSize: int32(maxSize),
+		sema:    make(chan struct{}, runtime.GOMAXPROCS(0)),
 	}
 	s.buildEvents()
 
@@ -25,6 +27,7 @@ func NewStorageSlice[T comparable](maxSize int) *storageSlice[T] {
 
 type storageSlice[T comparable] struct {
 	maxSize int32
+	sema    chan struct{}
 	events  []T
 	size    atomic.Int32
 	data    sync.Pool
@@ -47,10 +50,20 @@ func (s *storageSlice[T]) Len() int {
 }
 
 func (s *storageSlice[T]) Iterate(f func(ee T)) {
+	var wg sync.WaitGroup
+
 	s.mu.Lock()
 	for _, event := range s.events {
-		f(event)
+		wg.Add(1)
+		s.sema <- struct{}{}
+		event := event
+		go func() {
+			f(event)
+			<-s.sema
+			wg.Done()
+		}()
 	}
+	wg.Wait()
 	s.mu.Unlock()
 }
 
