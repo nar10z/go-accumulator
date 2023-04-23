@@ -10,6 +10,7 @@ package storage
 
 import (
 	"container/list"
+	"runtime"
 	"sync"
 )
 
@@ -17,12 +18,14 @@ import (
 func NewStorageList[T comparable](size int) *storageList[T] {
 	return &storageList[T]{
 		size:   size,
+		sema:   make(chan struct{}, runtime.GOMAXPROCS(0)),
 		events: list.New(),
 	}
 }
 
 type storageList[T comparable] struct {
 	size   int
+	sema   chan struct{}
 	events *list.List
 	mu     sync.Mutex
 }
@@ -43,10 +46,20 @@ func (s *storageList[T]) Len() int {
 }
 
 func (s *storageList[T]) Iterate(f func(ee T)) {
+	var wg sync.WaitGroup
+
 	s.mu.Lock()
 	for temp := s.events.Front(); temp != nil; temp = temp.Next() {
-		f(temp.Value.(T))
+		wg.Add(1)
+		s.sema <- struct{}{}
+		event := temp.Value.(T)
+		go func() {
+			f(event)
+			<-s.sema
+			wg.Done()
+		}()
 	}
+	wg.Wait()
 	s.mu.Unlock()
 }
 

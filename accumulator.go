@@ -193,11 +193,16 @@ func (a *accumulator[T]) flush() {
 	}
 
 	originalEvents := make([]T, 0, l)
+	mu := sync.Mutex{}
+
 	a.storage.Iterate(func(e *eventExtended[T]) {
 		if e.done.Load() {
 			return
 		}
+
+		mu.Lock()
 		originalEvents = append(originalEvents, e.e)
+		mu.Unlock()
 	})
 
 	err := a.flushFunc(originalEvents)

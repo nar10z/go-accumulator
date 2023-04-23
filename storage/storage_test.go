@@ -11,6 +11,7 @@ package storage
 import (
 	"fmt"
 	"strconv"
+	"sync/atomic"
 	"testing"
 )
 
@@ -25,64 +26,64 @@ func BenchmarkStorage(b *testing.B) {
 	b.ResetTimer()
 	b.Run("#1. list", func(b *testing.B) {
 		stor := NewStorageList[*A](size)
-		sum := 0
+		sum := atomic.Int32{}
 
 		for i := 0; i < b.N; i++ {
 			s := strconv.FormatInt(int64(i), 10)
 
 			if !stor.Put(&A{s: s, i: i}) {
 				stor.Iterate(func(ee *A) {
-					sum++
+					sum.Add(1)
 				})
 				stor.Clear()
 			}
 		}
 
-		sum += stor.Len()
-		if sum != b.N {
-			fmt.Printf("got=%d, want=%d\n", sum, b.N)
+		sum.Add(int32(stor.Len()))
+		if sum.Load() != int32(b.N) {
+			fmt.Printf("got=%d, want=%d\n", sum.Load(), b.N)
 			b.Fail()
 		}
 	})
 	b.Run("#2. gods/list", func(b *testing.B) {
 		stor := NewStorageSinglyList[*A](size)
-		sum := 0
+		sum := atomic.Int32{}
 
 		for i := 0; i < b.N; i++ {
 			s := strconv.FormatInt(int64(i), 10)
 
 			if !stor.Put(&A{s: s, i: i}) {
 				stor.Iterate(func(ee *A) {
-					sum++
+					sum.Add(1)
 				})
 				stor.Clear()
 			}
 		}
 
-		sum += stor.Len()
-		if sum != b.N {
-			fmt.Printf("got=%d, want=%d\n", sum, b.N)
+		sum.Add(int32(stor.Len()))
+		if sum.Load() != int32(b.N) {
+			fmt.Printf("got=%d, want=%d\n", sum.Load(), b.N)
 			b.Fail()
 		}
 	})
 	b.Run("#3. slice", func(b *testing.B) {
 		stor := NewStorageSlice[*A](size)
-		sum := 0
+		sum := atomic.Int32{}
 
 		for i := 0; i < b.N; i++ {
 			s := strconv.FormatInt(int64(i), 10)
 
 			if !stor.Put(&A{s: s, i: i}) {
 				stor.Iterate(func(ee *A) {
-					sum++
+					sum.Add(1)
 				})
 				stor.Clear()
 			}
 		}
 
-		sum += stor.Len()
-		if sum != b.N {
-			fmt.Printf("got=%d, want=%d\n", sum, b.N)
+		sum.Add(int32(stor.Len()))
+		if sum.Load() != int32(b.N) {
+			fmt.Printf("got=%d, want=%d\n", sum.Load(), b.N)
 			b.Fail()
 		}
 	})

@@ -9,6 +9,7 @@
 package storage
 
 import (
+	"runtime"
 	"sync"
 
 	sll "github.com/emirpasic/gods/lists/singlylinkedlist"
@@ -18,12 +19,14 @@ import (
 func NewStorageSinglyList[T comparable](size int) *storageSinglyList[T] {
 	return &storageSinglyList[T]{
 		size:   size,
+		sema:   make(chan struct{}, runtime.GOMAXPROCS(0)),
 		events: sll.New(),
 	}
 }
 
 type storageSinglyList[T comparable] struct {
 	size   int
+	sema   chan struct{}
 	events *sll.List
 	mu     sync.Mutex
 }
@@ -44,10 +47,20 @@ func (s *storageSinglyList[T]) Len() int {
 }
 
 func (s *storageSinglyList[T]) Iterate(f func(ee T)) {
+	var wg sync.WaitGroup
+
 	s.mu.Lock()
 	s.events.Each(func(_ int, temp any) {
-		f(temp.(T))
+		wg.Add(1)
+		s.sema <- struct{}{}
+		event := temp.(T)
+		go func() {
+			f(event)
+			<-s.sema
+			wg.Done()
+		}()
 	})
+	wg.Wait()
 	s.mu.Unlock()
 }
 
