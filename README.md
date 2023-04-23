@@ -1,6 +1,7 @@
 # go-accumulator
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/nar10z/go-accumulator.svg)](https://pkg.go.dev/github.com/nar10z/go-accumulator)
+[![Go Report Card](https://goreportcard.com/badge/github.com/nar10z/go-accumulator)](https://goreportcard.com/report/github.com/nar10z/go-accumulator)
 
 Solution for accumulation of events and their subsequent processing.
 
