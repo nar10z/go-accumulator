@@ -3,7 +3,6 @@ module github.com/nar10z/go-accumulator
 go 1.20
 
 require (
-	github.com/emirpasic/gods v1.18.1
 	github.com/stretchr/testify v1.8.2
 	golang.org/x/sync v0.1.0
 )

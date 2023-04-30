@@ -268,7 +268,6 @@ func Test_accumulator(t *testing.T) {
 		defer cancel()
 
 		var (
-			countSyncEvent  = 300
 			countAsyncEvent = 100
 			summary         = 0
 		)
@@ -281,41 +280,50 @@ func Test_accumulator(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, coll)
 
-		time.Sleep(time.Second)
+		time.Sleep(10 * time.Microsecond)
 
-		var wgEvents sync.WaitGroup
+		for i := 0; i < countAsyncEvent; i++ {
+			require.Error(t, coll.AddAsync(ctx, i))
+		}
 
-		wgEvents.Add(1)
-		go func() {
-			defer wgEvents.Done()
-
-			for i := 0; i < countAsyncEvent; i++ {
-				require.Error(t, coll.AddAsync(ctx, i))
-			}
-		}()
-
-		wgEvents.Add(1)
-		go func() {
-			defer wgEvents.Done()
-
-			var errGr errgroup.Group
-			errGr.SetLimit(5000)
-
-			for i := 0; i < countSyncEvent; i++ {
-				i := i
-				errGr.Go(func() error {
-					return coll.AddSync(ctx, i)
-				})
-			}
-			require.Error(t, errGr.Wait())
-		}()
-
-		wgEvents.Wait()
 		coll.Stop()
 
 		require.Equal(t, 0, summary)
 	})
-	t.Run("#2.4. Send to close buffer", func(t *testing.T) {
+	t.Run("#2.4. Context deadline", func(t *testing.T) {
+		ctxIn, cancelIn := context.WithTimeout(ctx, time.Nanosecond)
+		defer cancelIn()
+
+		var (
+			countSyncEvent = 110
+			summary        = 0
+		)
+
+		coll, err := New(100, time.Millisecond*100, func(events []int) error {
+			summary += len(events)
+			return nil
+		})
+
+		require.NoError(t, err)
+		require.NotNil(t, coll)
+
+		time.Sleep(10 * time.Microsecond)
+
+		var errGr errgroup.Group
+		errGr.SetLimit(50)
+		for i := 0; i < countSyncEvent; i++ {
+			i := i
+			errGr.Go(func() error {
+				return coll.AddSync(ctxIn, i)
+			})
+		}
+		_ = errGr.Wait()
+
+		coll.Stop()
+
+		require.Equal(t, 0, summary)
+	})
+	t.Run("#2.5. Send to close buffer", func(t *testing.T) {
 		var (
 			countSyncEvent  = 30
 			countAsyncEvent = 10

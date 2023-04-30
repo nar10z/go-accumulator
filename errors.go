@@ -15,6 +15,4 @@ var (
 	ErrNilFlushFunc = errors.New("nil flush func")
 	// ErrSendToClose ...
 	ErrSendToClose = errors.New("send to close accumulator")
-	// ErrNotSetStorageType ...
-	ErrNotSetStorageType = errors.New("not set storage type")
 )

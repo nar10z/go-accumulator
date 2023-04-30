@@ -30,6 +30,14 @@ The accumulator provides 2 methods:
 ## Example
 
 ```go
+/*
+ * Copyright (c) 2023.
+ *
+ * License MIT (https://raw.githubusercontent.com/nar10z/go-accumulator/main/LICENSE)
+ *
+ * Developed thanks to Nikita Terentyev (nar10z). Use it for good, and let your code work without problems!
+ */
+
 package main
 
 import (
@@ -53,8 +61,8 @@ func main() {
 
 	accumulator, err := goaccum.New[string](3, time.Second, func(events []string) error {
 		fmt.Printf("Start flush %d events:\n", len(events))
-		for i, e := range events {
-			fmt.Printf(" - %d) %s\n", i+1, e)
+		for _, e := range events {
+			fmt.Printf(" - %s\n", e)
 		}
 		fmt.Printf("Finish\n")
 		fmt.Printf(strings.Repeat("-", 100))
@@ -84,7 +92,7 @@ func main() {
 			go func() {
 				defer wg.Done()
 
-				errE := accumulator.AddSync(ctx, fmt.Sprintf("sync №%d", i))
+				errE := accumulator.AddSync(ctx, fmt.Sprintf("sync #%d", i))
 				if errE != nil {
 					fmt.Printf("failed add event: %v\n", errE)
 				}
@@ -102,19 +110,19 @@ func main() {
 
 ```text
 Start flush 3 events:
- - 1) sync №3
- - 2) sync №0
- - 3) sync №2
+ - sync #3
+ - sync #0
+ - async №0
 Finish
 ----------------------------------------------------------------------------------------------------
 Start flush 3 events:
- - 1) async №0
- - 2) async №1
- - 3) async №2
+ - async №1
+ - async №2
+ - sync #2
 Finish
 ----------------------------------------------------------------------------------------------------
 Start flush 1 events:
- - 1) sync №1
+ - sync #1
 Finish
 ----------------------------------------------------------------------------------------------------
 ```

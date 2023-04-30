@@ -29,8 +29,8 @@ func main() {
 
 	accumulator, err := goaccum.New[string](3, time.Second, func(events []string) error {
 		fmt.Printf("Start flush %d events:\n", len(events))
-		for i, e := range events {
-			fmt.Printf(" - %d) %s\n", i+1, e)
+		for _, e := range events {
+			fmt.Printf(" - %s\n", e)
 		}
 		fmt.Printf("Finish\n")
 		fmt.Printf(strings.Repeat("-", 100))
@@ -60,7 +60,7 @@ func main() {
 			go func() {
 				defer wg.Done()
 
-				errE := accumulator.AddSync(ctx, fmt.Sprintf("sync №%d", i))
+				errE := accumulator.AddSync(ctx, fmt.Sprintf("sync #%d", i))
 				if errE != nil {
 					fmt.Printf("failed add event: %v\n", errE)
 				}
