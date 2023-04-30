@@ -1,6 +1,4 @@
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
-github.com/emirpasic/gods v1.18.1 h1:FXtiHYKDGKCW2KzwZKx0iC0PQmdlorYgdFG9jPXJ1Bc=
-github.com/emirpasic/gods v1.18.1/go.mod h1:8tpGGwCnJ5H4r6BWwaV6OrWmMoPhUl5jm/FMNAnJvWQ=
 github.com/lrweck/accumulator v0.0.0-20230204043344-6f6538ed8d35 h1:UOy0xlaFCC7AtcL+V75Y966WFPnUzQijYfC4Zkqvcx4=
 github.com/lrweck/accumulator v0.0.0-20230204043344-6f6538ed8d35/go.mod h1:aEHlgNG5u4yPx0TqYv6yeuvefUCthLFnu7x+p3alMmg=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=

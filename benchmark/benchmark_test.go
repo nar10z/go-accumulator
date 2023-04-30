@@ -23,16 +23,15 @@ func Benchmark_accum(b *testing.B) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	b.Run("#1.1 go-accumulator, list", func(b *testing.B) {
-		b.ResetTimer()
-
+	b.Run("#1 go-accumulator, slice async", func(b *testing.B) {
 		summary := 0
 
-		accumulator, _ := goaccum.NewWithStorage[*Data](flushSize, flushInterval, func(events []*Data) error {
+		b.ResetTimer()
+		accumulator, _ := goaccum.New[*Data](flushSize, flushInterval, func(events []*Data) error {
 			summary += len(events)
 			time.Sleep(time.Microsecond)
 			return nil
-		}, goaccum.List)
+		})
 
 		for i := 0; i < b.N; i++ {
 			_ = accumulator.AddAsync(ctx, &Data{i: i})
@@ -44,59 +43,15 @@ func Benchmark_accum(b *testing.B) {
 			b.Fail()
 		}
 	})
-	b.Run("#1.2 go-accumulator, slice", func(b *testing.B) {
-		b.ResetTimer()
-
+	b.Run("#2 go-accumulator, slice sync", func(b *testing.B) {
 		summary := 0
 
-		accumulator, _ := goaccum.NewWithStorage[*Data](flushSize, flushInterval, func(events []*Data) error {
+		b.ResetTimer()
+		accumulator, _ := goaccum.New[*Data](flushSize, flushInterval, func(events []*Data) error {
 			summary += len(events)
 			time.Sleep(time.Microsecond)
 			return nil
-		}, goaccum.Slice)
-
-		for i := 0; i < b.N; i++ {
-			_ = accumulator.AddAsync(ctx, &Data{i: i})
-		}
-
-		accumulator.Stop()
-
-		if summary != b.N {
-			b.Fail()
-		}
-	})
-	b.Run("#1.3 go-accumulator, stdList", func(b *testing.B) {
-		b.ResetTimer()
-
-		summary := 0
-
-		accumulator, _ := goaccum.NewWithStorage[*Data](flushSize, flushInterval, func(events []*Data) error {
-			summary += len(events)
-			time.Sleep(time.Microsecond)
-			return nil
-		}, goaccum.StdList)
-
-		for i := 0; i < b.N; i++ {
-			_ = accumulator.AddAsync(ctx, &Data{i: i})
-		}
-
-		accumulator.Stop()
-
-		if summary != b.N {
-			b.Fail()
-		}
-	})
-
-	b.Run("#2.1 go-accumulator, list sync", func(b *testing.B) {
-		b.ResetTimer()
-
-		summary := 0
-
-		accumulator, _ := goaccum.NewWithStorage[*Data](flushSize, flushInterval, func(events []*Data) error {
-			summary += len(events)
-			time.Sleep(time.Microsecond)
-			return nil
-		}, goaccum.List)
+		})
 
 		var errGr errgroup.Group
 		errGr.SetLimit(flushSize)
@@ -113,20 +68,25 @@ func Benchmark_accum(b *testing.B) {
 			b.Fail()
 		}
 	})
-	b.Run("#2.2 go-accumulator, slice sync", func(b *testing.B) {
-		b.ResetTimer()
-
+	b.Run("#3 go-accumulator, slice", func(b *testing.B) {
 		summary := 0
+		n1 := b.N / 2
+		n2 := b.N - n1
 
-		accumulator, _ := goaccum.NewWithStorage[*Data](flushSize, flushInterval, func(events []*Data) error {
+		b.ResetTimer()
+		accumulator, _ := goaccum.New[*Data](flushSize, flushInterval, func(events []*Data) error {
 			summary += len(events)
 			time.Sleep(time.Microsecond)
 			return nil
-		}, goaccum.Slice)
+		})
+
+		for i := 0; i < n1; i++ {
+			_ = accumulator.AddAsync(ctx, &Data{i: i})
+		}
 
 		var errGr errgroup.Group
 		errGr.SetLimit(flushSize)
-		for i := 0; i < b.N; i++ {
+		for i := 0; i < n2; i++ {
 			errGr.Go(func() error {
 				return accumulator.AddSync(ctx, &Data{i: i})
 			})
@@ -139,34 +99,7 @@ func Benchmark_accum(b *testing.B) {
 			b.Fail()
 		}
 	})
-	b.Run("#2.3 go-accumulator, stdList sync", func(b *testing.B) {
-		b.ResetTimer()
-
-		summary := 0
-
-		accumulator, _ := goaccum.NewWithStorage[*Data](flushSize, flushInterval, func(events []*Data) error {
-			summary += len(events)
-			time.Sleep(time.Microsecond)
-			return nil
-		}, goaccum.StdList)
-
-		var errGr errgroup.Group
-		errGr.SetLimit(flushSize)
-		for i := 0; i < b.N; i++ {
-			errGr.Go(func() error {
-				return accumulator.AddSync(ctx, &Data{i: i})
-			})
-		}
-
-		_ = errGr.Wait()
-		accumulator.Stop()
-
-		if summary != b.N {
-			b.Fail()
-		}
-	})
-
-	b.Run("#3. lrweck/accumulator", func(b *testing.B) {
+	b.Run("#4. lrweck/accumulator", func(b *testing.B) {
 		b.ResetTimer()
 
 		summary := 0

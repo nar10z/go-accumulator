@@ -22,21 +22,11 @@ const (
 	defaultFlushInterval = time.Second * 5
 )
 
-// New creates a new data accumulator with default storage (Channel)
+// New creates a new data accumulator
 func New[T comparable](
 	flushSize uint,
 	flushInterval time.Duration,
 	flushFunc FlushExec[T],
-) (Accumulator[T], error) {
-	return NewWithStorage(flushSize, flushInterval, flushFunc, Slice)
-}
-
-// NewWithStorage creates a new data accumulator with the specified storage
-func NewWithStorage[T comparable](
-	flushSize uint,
-	flushInterval time.Duration,
-	flushFunc FlushExec[T],
-	st StorageType,
 ) (Accumulator[T], error) {
 	size := flushSize
 	if size == 0 {
@@ -54,18 +44,8 @@ func NewWithStorage[T comparable](
 
 	a := &accumulator[T]{
 		flushFunc: flushFunc,
-		chEvents:  make(chan *eventExtended[T]),
-	}
-
-	switch st {
-	case Slice:
-		a.storage = storage.NewStorageSlice[*eventExtended[T]](int(size))
-	case List:
-		a.storage = storage.NewStorageSinglyList[*eventExtended[T]](int(size))
-	case StdList:
-		a.storage = storage.NewStorageList[*eventExtended[T]](int(size))
-	default:
-		return nil, ErrNotSetStorageType
+		chEvents:  make(chan *eventExtended[T], size),
+		storage:   storage.New[*eventExtended[T]](int(size)),
 	}
 
 	a.wgStop.Add(1)
@@ -78,56 +58,51 @@ type accumulator[T comparable] struct {
 	flushFunc FlushExec[T]
 
 	chEvents chan *eventExtended[T]
-	storage  iStorage[T]
+	storage  *storage.Storage[*eventExtended[T]]
 
 	isClose atomic.Bool
 	wgStop  sync.WaitGroup
 }
 
 func (a *accumulator[T]) AddAsync(ctx context.Context, event T) error {
-	if a.isClose.Load() {
-		return ErrSendToClose
-	}
-
-	select {
-	case <-ctx.Done():
-		return context.DeadlineExceeded
-	default:
-
+	if err := a.beforeAddCheck(ctx); err != nil {
+		return err
 	}
 
 	a.chEvents <- &eventExtended[T]{e: event}
-
 	return nil
 }
 
 func (a *accumulator[T]) AddSync(ctx context.Context, event T) error {
-	if a.isClose.Load() {
-		return ErrSendToClose
-	}
-
-	ch := make(chan error)
-	defer close(ch)
-
-	select {
-	case <-ctx.Done():
-		return context.DeadlineExceeded
-	default:
-
+	if err := a.beforeAddCheck(ctx); err != nil {
+		return err
 	}
 
 	e := &eventExtended[T]{
-		fallback: ch,
+		fallback: make(chan error),
 		e:        event,
 	}
 	a.chEvents <- e
 
 	select {
-	case err := <-ch:
+	case err := <-e.fallback:
 		return err
 	case <-ctx.Done():
-		e.done.Store(true)
+		e.fallback = nil
 		return context.DeadlineExceeded
+	}
+}
+
+func (a *accumulator[T]) beforeAddCheck(ctx context.Context) error {
+	if a.isClose.Load() {
+		return ErrSendToClose
+	}
+
+	select {
+	case <-ctx.Done():
+		return context.DeadlineExceeded
+	default:
+		return nil
 	}
 }
 
@@ -145,20 +120,8 @@ func (a *accumulator[T]) Stop() {
 func (a *accumulator[T]) startFlusher(flushInterval time.Duration) {
 	defer a.wgStop.Done()
 
-	ticker := make(chan struct{})
-	lock := atomic.Bool{}
-	tickerTick := func() {
-		if lock.Load() {
-			return
-		}
-
-		lock.Store(true)
-		go func() {
-			time.Sleep(flushInterval)
-			ticker <- struct{}{}
-			lock.Store(false)
-		}()
-	}
+	ticker := time.NewTicker(flushInterval)
+	defer ticker.Stop()
 
 	for {
 		select {
@@ -169,18 +132,13 @@ func (a *accumulator[T]) startFlusher(flushInterval time.Duration) {
 				return
 			}
 
-			// skip finished event (context.DeadlineExceeded)
-			if e.done.Load() {
-				continue
-			}
-
 			if a.storage.Put(e) {
-				tickerTick()
 				continue
 			}
 
 			a.flush()
-		case <-ticker:
+			ticker.Reset(flushInterval)
+		case <-ticker.C:
 			a.flush()
 		}
 	}
@@ -192,28 +150,19 @@ func (a *accumulator[T]) flush() {
 		return
 	}
 
+	events := a.storage.Get()
+	a.storage.Clear()
+
 	originalEvents := make([]T, 0, l)
-	mu := sync.Mutex{}
-
-	a.storage.Iterate(func(e *eventExtended[T]) {
-		if e.done.Load() {
-			return
-		}
-
-		mu.Lock()
+	for _, e := range events {
 		originalEvents = append(originalEvents, e.e)
-		mu.Unlock()
-	})
+	}
 
 	err := a.flushFunc(originalEvents)
-	a.storage.Iterate(func(e *eventExtended[T]) {
-		isDone := e.done.Load()
-		e.done.Store(true)
-
-		if isDone || e.fallback == nil {
-			return
+	for _, e := range events {
+		if e.fallback == nil {
+			continue
 		}
 		e.fallback <- err
-	})
-	a.storage.Clear()
+	}
 }
