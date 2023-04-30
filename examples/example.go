@@ -46,7 +46,7 @@ func main() {
 
 	go func() {
 		for i := 0; i < countAsync; i++ {
-			errE := accumulator.AddAsync(ctx, fmt.Sprintf("async №%d", i))
+			errE := accumulator.AddAsync(ctx, fmt.Sprintf("async #%d", i))
 			if errE != nil {
 				fmt.Printf("failed add event: %v\n", errE)
 			}

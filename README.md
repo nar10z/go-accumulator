@@ -30,14 +30,6 @@ The accumulator provides 2 methods:
 ## Example
 
 ```go
-/*
- * Copyright (c) 2023.
- *
- * License MIT (https://raw.githubusercontent.com/nar10z/go-accumulator/main/LICENSE)
- *
- * Developed thanks to Nikita Terentyev (nar10z). Use it for good, and let your code work without problems!
- */
-
 package main
 
 import (
@@ -78,7 +70,7 @@ func main() {
 
 	go func() {
 		for i := 0; i < countAsync; i++ {
-			errE := accumulator.AddAsync(ctx, fmt.Sprintf("async №%d", i))
+			errE := accumulator.AddAsync(ctx, fmt.Sprintf("async #%d", i))
 			if errE != nil {
 				fmt.Printf("failed add event: %v\n", errE)
 			}
@@ -112,12 +104,12 @@ func main() {
 Start flush 3 events:
  - sync #3
  - sync #0
- - async №0
+ - async #0
 Finish
 ----------------------------------------------------------------------------------------------------
 Start flush 3 events:
- - async №1
- - async №2
+ - async #1
+ - async #2
  - sync #2
 Finish
 ----------------------------------------------------------------------------------------------------
