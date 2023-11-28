@@ -23,7 +23,7 @@ const (
 )
 
 // New creates a new data accumulator
-func New[T comparable](
+func New[T any](
 	flushSize uint,
 	flushInterval time.Duration,
 	flushFunc FlushExec[T],
@@ -54,7 +54,7 @@ func New[T comparable](
 	return a, nil
 }
 
-type accumulator[T comparable] struct {
+type accumulator[T any] struct {
 	flushFunc FlushExec[T]
 
 	chEvents chan *eventExtended[T]

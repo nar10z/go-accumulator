@@ -13,7 +13,7 @@ import (
 )
 
 // New creates a new storage
-func New[T comparable](maxSize int) *Storage[T] {
+func New[T any](maxSize int) *Storage[T] {
 	s := &Storage[T]{
 		maxSize: maxSize,
 	}
@@ -23,7 +23,7 @@ func New[T comparable](maxSize int) *Storage[T] {
 }
 
 // Storage ...
-type Storage[T comparable] struct {
+type Storage[T any] struct {
 	maxSize int
 	events  []T
 	data    sync.Pool
