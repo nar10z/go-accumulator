@@ -82,12 +82,11 @@ func main() {
 		for i := 0; i < countSync; i++ {
 			i := i
 			go func() {
-				defer wg.Done()
-
 				errE := accumulator.AddSync(ctx, fmt.Sprintf("sync #%d", i))
 				if errE != nil {
 					fmt.Printf("failed add event: %v\n", errE)
 				}
+				wg.Done()
 			}()
 		}
 	}()
@@ -96,6 +95,7 @@ func main() {
 
 	accumulator.Stop()
 }
+
 ```
 
 ### output:

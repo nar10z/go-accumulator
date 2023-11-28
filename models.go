@@ -11,10 +11,10 @@ package go_accumulator
 import "context"
 
 // FlushExec a function to call when an action needs to be performed
-type FlushExec[T comparable] func(events []T) error
+type FlushExec[T any] func(events []T) error
 
 // Accumulator data accumulator
-type Accumulator[T comparable] interface {
+type Accumulator[T any] interface {
 	// AddAsync adds an object to the data accumulator without waiting for flushFunc to execute.
 	// Returns ErrSendToClose if the drive has been closed.
 	AddAsync(ctx context.Context, d T) error
