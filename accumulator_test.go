@@ -57,7 +57,6 @@ func Test_accumulator(t *testing.T) {
 		)
 
 		coll, err := New(100, time.Millisecond*50, func(events []int) error {
-			time.Sleep(time.Millisecond)
 			summary += len(events)
 			return nil
 		})
@@ -92,7 +91,6 @@ func Test_accumulator(t *testing.T) {
 		)
 
 		coll, err := New(100, time.Millisecond*100, func(events []int) error {
-			time.Sleep(time.Millisecond)
 			summary += len(events)
 			return nil
 		})
@@ -104,9 +102,8 @@ func Test_accumulator(t *testing.T) {
 		errGr.SetLimit(5000)
 
 		for i := 0; i < countSyncEvent; i++ {
-			i := i
 			errGr.Go(func() error {
-				return coll.AddSync(ctx, i)
+				return coll.AddSync(ctx, 1)
 			})
 		}
 		require.NoError(t, errGr.Wait())
@@ -124,7 +121,6 @@ func Test_accumulator(t *testing.T) {
 		)
 
 		coll, err := New(1000, time.Millisecond*100, func(events []int) error {
-			time.Sleep(time.Millisecond)
 			summary += len(events)
 			return nil
 		})
@@ -174,7 +170,6 @@ func Test_accumulator(t *testing.T) {
 		)
 
 		coll, err := New(1000, time.Minute*10, func(events []int) error {
-			time.Sleep(time.Millisecond)
 			summary += len(events)
 			return nil
 		})
@@ -223,7 +218,6 @@ func Test_accumulator(t *testing.T) {
 		)
 
 		coll, err := New(1000000, time.Millisecond*50, func(events []int) error {
-			time.Sleep(time.Millisecond)
 			summary += len(events)
 			return nil
 		})

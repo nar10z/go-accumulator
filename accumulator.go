@@ -13,8 +13,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"github.com/nar10z/go-accumulator/storage"
 )
 
 const (
@@ -44,12 +42,20 @@ func New[T any](
 
 	a := &accumulator[T]{
 		flushFunc: flushFunc,
-		chEvents:  make(chan *eventExtended[T], size),
-		storage:   storage.New[*eventExtended[T]](int(size)),
+		size:      int(flushSize),
+		interval:  flushInterval,
+
+		chEvents: make(chan eventExtended[T], size),
+		batchEvents: sync.Pool{
+			New: func() any {
+				ss := make([]eventExtended[T], 0, size)
+				return ss
+			},
+		},
 	}
 
 	a.wgStop.Add(1)
-	go a.startFlusher(interval)
+	go a.startFlusher()
 
 	return a, nil
 }
@@ -57,8 +63,11 @@ func New[T any](
 type accumulator[T any] struct {
 	flushFunc FlushExec[T]
 
-	chEvents chan *eventExtended[T]
-	storage  *storage.Storage[*eventExtended[T]]
+	size     int
+	interval time.Duration
+
+	chEvents    chan eventExtended[T]
+	batchEvents sync.Pool
 
 	isClose atomic.Bool
 	wgStop  sync.WaitGroup
@@ -69,7 +78,7 @@ func (a *accumulator[T]) AddAsync(ctx context.Context, event T) error {
 		return err
 	}
 
-	a.chEvents <- &eventExtended[T]{e: event}
+	a.chEvents <- eventExtended[T]{e: event}
 	return nil
 }
 
@@ -78,7 +87,7 @@ func (a *accumulator[T]) AddSync(ctx context.Context, event T) error {
 		return err
 	}
 
-	e := &eventExtended[T]{
+	e := eventExtended[T]{
 		fallback: make(chan error),
 		e:        event,
 	}
@@ -89,7 +98,7 @@ func (a *accumulator[T]) AddSync(ctx context.Context, event T) error {
 		return err
 	case <-ctx.Done():
 		e.fallback = nil
-		return context.DeadlineExceeded
+		return ctx.Err()
 	}
 }
 
@@ -100,7 +109,7 @@ func (a *accumulator[T]) beforeAddCheck(ctx context.Context) error {
 
 	select {
 	case <-ctx.Done():
-		return context.DeadlineExceeded
+		return ctx.Err()
 	default:
 		return nil
 	}
@@ -117,45 +126,61 @@ func (a *accumulator[T]) Stop() {
 	a.wgStop.Wait()
 }
 
-func (a *accumulator[T]) startFlusher(flushInterval time.Duration) {
+func (a *accumulator[T]) newBatch() []eventExtended[T] {
+	ss, _ := a.batchEvents.Get().([]eventExtended[T])
+	return ss
+}
+
+func (a *accumulator[T]) clearBatch(s []eventExtended[T]) {
+	s = s[:0]
+	a.batchEvents.Put(s)
+}
+
+func (a *accumulator[T]) startFlusher() {
 	defer a.wgStop.Done()
 
-	ticker := time.NewTicker(flushInterval)
+	ticker := time.NewTicker(a.interval)
 	defer ticker.Stop()
+
+	batch := a.newBatch()
+
+	flush := func() {
+		a.flush(batch)
+		a.clearBatch(batch)
+		batch = a.newBatch()
+	}
 
 	for {
 		select {
 		case e, ok := <-a.chEvents:
 			if !ok {
 				a.chEvents = nil
-				a.flush()
+				flush()
 				return
 			}
 
-			if a.storage.Put(e) {
+			batch = append(batch, e)
+			if len(batch) < a.size {
 				continue
 			}
 
-			a.flush()
-			ticker.Reset(flushInterval)
+			flush()
+
+			ticker.Reset(a.interval)
 		case <-ticker.C:
-			a.flush()
+			flush()
 		}
 	}
 }
 
-func (a *accumulator[T]) flush() {
-	l := a.storage.Len()
-	if l == 0 {
+func (a *accumulator[T]) flush(events []eventExtended[T]) {
+	if len(events) == 0 {
 		return
 	}
 
-	events := a.storage.Get()
-	a.storage.Clear()
-
-	originalEvents := make([]T, 0, l)
-	for _, e := range events {
-		originalEvents = append(originalEvents, e.e)
+	originalEvents := make([]T, len(events))
+	for i := range events {
+		originalEvents[i] = events[i].e
 	}
 
 	err := a.flushFunc(originalEvents)
