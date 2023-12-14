@@ -16,7 +16,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
 )
@@ -24,24 +23,12 @@ import (
 func Test_New(t *testing.T) {
 	t.Parallel()
 
-	t.Run("#1. Failed", func(t *testing.T) {
-		coll, err := New[int](0, 0, nil)
+	coll := New[int](10, time.Millisecond, func(events []int) error { return nil })
 
-		require.Error(t, err)
-		assert.Nil(t, coll)
-	})
-	t.Run("#2. Success", func(t *testing.T) {
-		coll, err := New[int](10, time.Millisecond*20, func(events []int) error { return nil })
+	require.NotNil(t, coll)
 
-		require.NoError(t, err)
-		require.NotNil(t, coll)
-
-		coll.Stop()
-		col, ok := coll.(*accumulator[int])
-		require.True(t, ok)
-		require.NotNil(t, col)
-		require.True(t, col.isClose.Load())
-	})
+	coll.Stop()
+	require.True(t, coll.isClose.Load())
 }
 
 func Test_accumulator(t *testing.T) {
@@ -58,12 +45,11 @@ func Test_accumulator(t *testing.T) {
 			summary         = 0
 		)
 
-		coll, err := New(100, time.Millisecond*50, func(events []int) error {
+		coll := New(100, time.Millisecond*50, func(events []int) error {
 			summary += len(events)
 			return nil
 		})
 
-		require.NoError(t, err)
 		require.NotNil(t, coll)
 
 		var wgEvents sync.WaitGroup
@@ -92,12 +78,11 @@ func Test_accumulator(t *testing.T) {
 			summary        = 0
 		)
 
-		coll, err := New(100, time.Millisecond*100, func(events []int) error {
+		coll := New(100, time.Millisecond*100, func(events []int) error {
 			summary += len(events)
 			return nil
 		})
 
-		require.NoError(t, err)
 		require.NotNil(t, coll)
 
 		var errGr errgroup.Group
@@ -122,12 +107,11 @@ func Test_accumulator(t *testing.T) {
 			summary         = 0
 		)
 
-		coll, err := New(1000, time.Millisecond*100, func(events []int) error {
+		coll := New(1000, time.Millisecond*100, func(events []int) error {
 			summary += len(events)
 			return nil
 		})
 
-		require.NoError(t, err)
 		require.NotNil(t, coll)
 
 		var wgEvents sync.WaitGroup
@@ -171,12 +155,11 @@ func Test_accumulator(t *testing.T) {
 			summary         = 0
 		)
 
-		coll, err := New(1000, time.Minute*10, func(events []int) error {
+		coll := New(1000, time.Minute*10, func(events []int) error {
 			summary += len(events)
 			return nil
 		})
 
-		require.NoError(t, err)
 		require.NotNil(t, coll)
 
 		var wgEvents sync.WaitGroup
@@ -219,12 +202,11 @@ func Test_accumulator(t *testing.T) {
 			summary         = 0
 		)
 
-		coll, err := New(1000000, time.Millisecond*50, func(events []int) error {
+		coll := New(1000000, time.Millisecond*50, func(events []int) error {
 			summary += len(events)
 			return nil
 		})
 
-		require.NoError(t, err)
 		require.NotNil(t, coll)
 
 		var wgEvents sync.WaitGroup
@@ -268,12 +250,11 @@ func Test_accumulator(t *testing.T) {
 			summary         = 0
 		)
 
-		coll, err := New(1000, time.Millisecond*100, func(events []int) error {
+		coll := New(1000, time.Millisecond*100, func(events []int) error {
 			summary += len(events)
 			return nil
 		})
 
-		require.NoError(t, err)
 		require.NotNil(t, coll)
 
 		time.Sleep(10 * time.Microsecond)
@@ -295,12 +276,11 @@ func Test_accumulator(t *testing.T) {
 			summary        = 0
 		)
 
-		coll, err := New(100, time.Millisecond*100, func(events []int) error {
+		coll := New(100, time.Millisecond*100, func(events []int) error {
 			summary += len(events)
 			return nil
 		})
 
-		require.NoError(t, err)
 		require.NotNil(t, coll)
 
 		time.Sleep(10 * time.Microsecond)
@@ -326,13 +306,12 @@ func Test_accumulator(t *testing.T) {
 			summary         = 0
 		)
 
-		coll, err := New(1000, time.Millisecond*100, func(events []int) error {
+		coll := New(1000, time.Millisecond*100, func(events []int) error {
 			summary += len(events)
 			return nil
 		})
 		coll.Stop()
 
-		require.NoError(t, err)
 		require.NotNil(t, coll)
 
 		var wgEvents sync.WaitGroup
@@ -369,11 +348,10 @@ func Test_accumulator(t *testing.T) {
 	t.Run("#2.6. Failed flush", func(t *testing.T) {
 		var wantErr = errors.New("some")
 
-		coll, err := New(2, time.Millisecond*10, func(events []int) error {
+		coll := New(2, time.Millisecond*10, func(events []int) error {
 			return wantErr
 		})
 
-		require.NoError(t, err)
 		require.NotNil(t, coll)
 
 		errAdd := coll.AddSync(ctx, 1)
@@ -388,12 +366,11 @@ func Test_accumulator(t *testing.T) {
 			want   = []int{0, 1, 2, 3, 4}
 		)
 
-		coll, err := New(2, time.Millisecond*10, func(events []int) error {
+		coll := New(2, time.Millisecond*10, func(events []int) error {
 			result = append(result, events...)
 			return nil
 		})
 
-		require.NoError(t, err)
 		require.NotNil(t, coll)
 
 		var errGr errgroup.Group

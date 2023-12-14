@@ -26,7 +26,7 @@ func Benchmark_accum(b *testing.B) {
 	b.Run("go-accumulator, async", func(b *testing.B) {
 		summary := 0
 
-		accumulator, _ := goaccum.New[Data](flushSize, flushInterval, func(events []Data) error {
+		accumulator := goaccum.New[Data](flushSize, flushInterval, func(events []Data) error {
 			summary += len(events)
 			return nil
 		})
@@ -66,7 +66,7 @@ func Benchmark_accum(b *testing.B) {
 	b.Run("go-accumulator, sync", func(b *testing.B) {
 		summary := 0
 
-		accumulator, _ := goaccum.New[Data](flushSize, flushInterval, func(events []Data) error {
+		accumulator := goaccum.New[Data](flushSize, flushInterval, func(events []Data) error {
 			summary += len(events)
 			return nil
 		})
@@ -91,7 +91,7 @@ func Benchmark_accum(b *testing.B) {
 		n1 := b.N / 2
 		n2 := b.N - n1
 
-		accumulator, _ := goaccum.New[Data](flushSize, flushInterval, func(events []Data) error {
+		accumulator := goaccum.New[Data](flushSize, flushInterval, func(events []Data) error {
 			summary += len(events)
 			return nil
 		})

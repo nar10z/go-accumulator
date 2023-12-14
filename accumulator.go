@@ -16,39 +16,44 @@ import (
 )
 
 const (
-	defaultFlushSize     = 500
-	defaultFlushInterval = time.Second * 5
+	defaultFlushSize     = 1000
+	defaultFlushInterval = time.Millisecond * 250
 )
 
-// New creates a new data accumulator
+// FlushExec a function to call when an action needs to be performed
+type FlushExec[T any] func(events []T) error
+
+func noop[T any](_ []T) error {
+	return nil
+}
+
+// New creates a new data Accumulator
 func New[T any](
 	flushSize uint,
 	flushInterval time.Duration,
 	flushFunc FlushExec[T],
-) (Accumulator[T], error) {
-	size := flushSize
-	if size == 0 {
-		size = defaultFlushSize
+) *Accumulator[T] {
+	if flushSize == 0 {
+		flushSize = defaultFlushSize
 	}
 
-	interval := flushInterval
-	if interval == 0 {
-		interval = defaultFlushInterval
+	if flushInterval == 0 {
+		flushInterval = defaultFlushInterval
 	}
 
 	if flushFunc == nil {
-		return nil, ErrNilFlushFunc
+		flushFunc = noop[T]
 	}
 
-	a := &accumulator[T]{
+	a := &Accumulator[T]{
 		flushFunc: flushFunc,
 		size:      int(flushSize),
 		interval:  flushInterval,
 
-		chEvents: make(chan eventExtended[T], size),
+		chEvents: make(chan eventExtended[T], flushSize),
 		batchEvents: sync.Pool{
 			New: func() any {
-				ss := make([]eventExtended[T], 0, size)
+				ss := make([]eventExtended[T], 0, flushSize)
 				return ss
 			},
 		},
@@ -57,10 +62,10 @@ func New[T any](
 	a.wgStop.Add(1)
 	go a.startFlusher()
 
-	return a, nil
+	return a
 }
 
-type accumulator[T any] struct {
+type Accumulator[T any] struct {
 	flushFunc FlushExec[T]
 
 	size     int
@@ -73,7 +78,7 @@ type accumulator[T any] struct {
 	wgStop  sync.WaitGroup
 }
 
-func (a *accumulator[T]) AddAsync(ctx context.Context, event T) error {
+func (a *Accumulator[T]) AddAsync(ctx context.Context, event T) error {
 	if err := a.beforeAddCheck(ctx); err != nil {
 		return err
 	}
@@ -82,7 +87,7 @@ func (a *accumulator[T]) AddAsync(ctx context.Context, event T) error {
 	return nil
 }
 
-func (a *accumulator[T]) AddSync(ctx context.Context, event T) error {
+func (a *Accumulator[T]) AddSync(ctx context.Context, event T) error {
 	if err := a.beforeAddCheck(ctx); err != nil {
 		return err
 	}
@@ -102,7 +107,7 @@ func (a *accumulator[T]) AddSync(ctx context.Context, event T) error {
 	}
 }
 
-func (a *accumulator[T]) beforeAddCheck(ctx context.Context) error {
+func (a *Accumulator[T]) beforeAddCheck(ctx context.Context) error {
 	if a.isClose.Load() {
 		return ErrSendToClose
 	}
@@ -115,7 +120,7 @@ func (a *accumulator[T]) beforeAddCheck(ctx context.Context) error {
 	}
 }
 
-func (a *accumulator[T]) Stop() {
+func (a *Accumulator[T]) Stop() {
 	if a.isClose.Load() {
 		return
 	}
@@ -126,16 +131,16 @@ func (a *accumulator[T]) Stop() {
 	a.wgStop.Wait()
 }
 
-func (a *accumulator[T]) newBatch() []eventExtended[T] {
+func (a *Accumulator[T]) newBatch() []eventExtended[T] {
 	ss, _ := a.batchEvents.Get().([]eventExtended[T])
 	return ss
 }
 
-func (a *accumulator[T]) clearBatch(s []eventExtended[T]) {
+func (a *Accumulator[T]) clearBatch(s []eventExtended[T]) {
 	a.batchEvents.Put(s[:0])
 }
 
-func (a *accumulator[T]) startFlusher() {
+func (a *Accumulator[T]) startFlusher() {
 	defer a.wgStop.Done()
 
 	ticker := time.NewTicker(a.interval)
@@ -172,7 +177,7 @@ func (a *accumulator[T]) startFlusher() {
 	}
 }
 
-func (a *accumulator[T]) flush(events []eventExtended[T]) {
+func (a *Accumulator[T]) flush(events []eventExtended[T]) {
 	if len(events) == 0 {
 		return
 	}
