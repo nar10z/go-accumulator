@@ -12,7 +12,7 @@ import (
 
 const (
 	flushSize     = 1000
-	flushInterval = time.Second
+	flushInterval = time.Millisecond * 250
 )
 
 type Data struct {
