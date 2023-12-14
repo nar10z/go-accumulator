@@ -27,28 +27,23 @@ func main() {
 		countAsync = 3
 	)
 
-	accumulator, err := goaccum.New[string](3, time.Second, func(events []string) error {
+	accumulator := goaccum.New[string](3, time.Second, func(events []string) error {
 		fmt.Printf("Start flush %d events:\n", len(events))
 		for _, e := range events {
 			fmt.Printf(" - %s\n", e)
 		}
-		fmt.Printf("Finish\n")
-		fmt.Printf(strings.Repeat("-", 100))
-		fmt.Printf("\n")
+		fmt.Printf("Finish\n%s\n", strings.Repeat("-", 20))
 		return nil
 	})
-	if err != nil {
-		panic(err)
-	}
 
 	var wg sync.WaitGroup
 	wg.Add(countSync + countAsync)
 
 	go func() {
 		for i := 0; i < countAsync; i++ {
-			errE := accumulator.AddAsync(ctx, fmt.Sprintf("async #%d", i))
-			if errE != nil {
-				fmt.Printf("failed add event: %v\n", errE)
+			err := accumulator.AddAsync(ctx, fmt.Sprintf("async #%d", i))
+			if err != nil {
+				fmt.Printf("failed add event: %v\n", err)
 			}
 			wg.Done()
 		}
@@ -58,9 +53,9 @@ func main() {
 		for i := 0; i < countSync; i++ {
 			i := i
 			go func() {
-				errE := accumulator.AddSync(ctx, fmt.Sprintf("sync #%d", i))
-				if errE != nil {
-					fmt.Printf("failed add event: %v\n", errE)
+				err := accumulator.AddSync(ctx, fmt.Sprintf("sync #%d", i))
+				if err != nil {
+					fmt.Printf("failed add event: %v\n", err)
 				}
 				wg.Done()
 			}()
