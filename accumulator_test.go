@@ -11,6 +11,7 @@ package go_accumulator
 import (
 	"context"
 	"errors"
+	"sort"
 	"sync"
 	"testing"
 	"time"
@@ -380,4 +381,39 @@ func Test_accumulator(t *testing.T) {
 
 		coll.Stop()
 	})
+
+	t.Run("#3.1. Equal result", func(t *testing.T) {
+		var (
+			result []int
+			want   = []int{0, 1, 2, 3, 4}
+		)
+
+		coll, err := New(2, time.Millisecond*10, func(events []int) error {
+			result = append(result, events...)
+			return nil
+		})
+
+		require.NoError(t, err)
+		require.NotNil(t, coll)
+
+		var errGr errgroup.Group
+		errGr.SetLimit(5)
+
+		for i := 0; i < 5; i++ {
+			i := i
+			errGr.Go(func() error {
+				return coll.AddSync(ctx, i)
+			})
+		}
+		require.NoError(t, errGr.Wait())
+
+		coll.Stop()
+
+		sort.Slice(result, func(i, j int) bool {
+			return result[i] < result[j]
+		})
+
+		require.Equal(t, result, want)
+	})
+
 }

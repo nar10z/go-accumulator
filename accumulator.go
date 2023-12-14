@@ -132,8 +132,7 @@ func (a *accumulator[T]) newBatch() []eventExtended[T] {
 }
 
 func (a *accumulator[T]) clearBatch(s []eventExtended[T]) {
-	s = s[:0]
-	a.batchEvents.Put(s)
+	a.batchEvents.Put(s[:0])
 }
 
 func (a *accumulator[T]) startFlusher() {
