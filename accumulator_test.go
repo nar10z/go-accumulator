@@ -392,5 +392,4 @@ func Test_accumulator(t *testing.T) {
 
 		require.Equal(t, result, want)
 	})
-
 }
