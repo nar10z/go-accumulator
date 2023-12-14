@@ -10,6 +10,7 @@ package go_accumulator
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"testing"
 	"time"
@@ -363,5 +364,20 @@ func Test_accumulator(t *testing.T) {
 		wgEvents.Wait()
 
 		require.Equal(t, 0, summary)
+	})
+	t.Run("#2.6. Failed flush", func(t *testing.T) {
+		var wantErr = errors.New("some")
+
+		coll, err := New(2, time.Millisecond*10, func(events []int) error {
+			return wantErr
+		})
+
+		require.NoError(t, err)
+		require.NotNil(t, coll)
+
+		errAdd := coll.AddSync(ctx, 1)
+		require.ErrorIs(t, errAdd, wantErr)
+
+		coll.Stop()
 	})
 }
