@@ -183,11 +183,11 @@ func (a *accumulator[T]) flush(events []eventExtended[T]) {
 	}
 
 	err := a.flushFunc(originalEvents)
-	for i := range events {
-		if events[i].fallback == nil {
+	for _, e := range events {
+		if e.fallback == nil {
 			continue
 		}
 
-		events[i].fallback <- err
+		e.fallback <- err
 	}
 }
