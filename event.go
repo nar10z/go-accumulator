@@ -6,7 +6,7 @@
  * Developed thanks to Nikita Terentyev (nar10z). Use it for good, and let your code work without problems!
  */
 
-package go_accumulator
+package goaccum
 
 type eventExtended[T any] struct {
 	// return error of flush operation
