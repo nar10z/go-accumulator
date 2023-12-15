@@ -1,7 +1,7 @@
 .PHONY: test test-cov
 
 test:
-	go test  ./... -v --race --tags=tests
+	go test  ./... -v --race
 
 test-cov:
 	go test --tags=tests -coverpkg=./... -coverprofile=coverage.out ./...
