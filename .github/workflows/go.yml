@@ -48,17 +48,6 @@ jobs:
       - name: Test
         run: go test --race -coverpkg=./... -coverprofile=coverage.out ./...
 
-      - name: Update coverage report
-        uses: ncruces/go-coverage-report@v0
-        with:
-          report: true
-          chart: true
-          amend: true
-        if: |
-          matrix.os == 'ubuntu-latest' &&
-          github.event_name == 'push'
-        continue-on-error: true
-
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v3
         env:
