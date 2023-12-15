@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
 )
@@ -23,12 +24,32 @@ import (
 func Test_New(t *testing.T) {
 	t.Parallel()
 
-	coll := New[int](10, time.Millisecond, func(events []int) error { return nil })
+	t.Run("Success", func(t *testing.T) {
+		t.Parallel()
 
-	require.NotNil(t, coll)
+		coll := New[int](10, time.Millisecond, func(events []int) error { return nil })
+		require.NotNil(t, coll)
 
-	coll.Stop()
-	require.True(t, coll.isClose.Load())
+		coll.Stop()
+		assert.True(t, coll.isClose.Load())
+	})
+
+	t.Run("Empty params", func(t *testing.T) {
+		t.Parallel()
+
+		coll := New[int](0, 0, nil)
+		require.NotNil(t, coll)
+
+		assert.NotEmpty(t, coll.size)
+		assert.NotEmpty(t, coll.interval)
+		assert.NotEmpty(t, coll.flushFunc)
+
+		coll.Stop()
+		assert.True(t, coll.isClose.Load())
+
+		coll.Stop()
+		assert.True(t, coll.isClose.Load())
+	})
 }
 
 func Test_accumulator(t *testing.T) {
