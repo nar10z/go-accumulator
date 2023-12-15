@@ -46,7 +46,7 @@ jobs:
           go-version-file: 'go.mod'
 
       - name: Test
-        run: go test  ./... -v --race
+        run: go test --race -coverpkg=./... -coverprofile=coverage.out ./...
 
       - name: Update coverage report
         uses: ncruces/go-coverage-report@v0
