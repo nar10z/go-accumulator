@@ -8,9 +8,9 @@
 
 package goaccum
 
-type eventExtended[T any] struct {
+type eventExtended struct {
 	// return error of flush operation
 	fallback chan error
 	// original data
-	e T
+	e uintptr
 }

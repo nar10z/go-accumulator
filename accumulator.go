@@ -13,6 +13,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"unsafe"
 )
 
 const (
@@ -50,10 +51,10 @@ func New[T any](
 		size:      int(flushSize),
 		interval:  flushInterval,
 
-		chEvents: make(chan eventExtended[T], flushSize),
+		chEvents: make(chan eventExtended, flushSize),
 		batchEvents: sync.Pool{
 			New: func() any {
-				ss := make([]eventExtended[T], 0, flushSize)
+				ss := make([]eventExtended, 0, flushSize)
 				return ss
 			},
 		},
@@ -71,7 +72,7 @@ type Accumulator[T any] struct {
 	size     int
 	interval time.Duration
 
-	chEvents    chan eventExtended[T]
+	chEvents    chan eventExtended
 	batchEvents sync.Pool
 
 	isClose atomic.Bool
@@ -83,7 +84,7 @@ func (a *Accumulator[T]) AddAsync(ctx context.Context, event T) error {
 		return err
 	}
 
-	a.chEvents <- eventExtended[T]{e: event}
+	a.chEvents <- eventExtended{e: uintptr(unsafe.Pointer(&event))}
 	return nil
 }
 
@@ -92,9 +93,9 @@ func (a *Accumulator[T]) AddSync(ctx context.Context, event T) error {
 		return err
 	}
 
-	e := eventExtended[T]{
+	e := eventExtended{
 		fallback: make(chan error),
-		e:        event,
+		e:        uintptr(unsafe.Pointer(&event)),
 	}
 	a.chEvents <- e
 
@@ -131,12 +132,12 @@ func (a *Accumulator[T]) Stop() {
 	a.wgStop.Wait()
 }
 
-func (a *Accumulator[T]) newBatch() []eventExtended[T] {
-	ss, _ := a.batchEvents.Get().([]eventExtended[T])
+func (a *Accumulator[T]) newBatch() []eventExtended {
+	ss, _ := a.batchEvents.Get().([]eventExtended)
 	return ss
 }
 
-func (a *Accumulator[T]) clearBatch(s []eventExtended[T]) {
+func (a *Accumulator[T]) clearBatch(s []eventExtended) {
 	a.batchEvents.Put(s[:0])
 }
 
@@ -177,14 +178,14 @@ func (a *Accumulator[T]) startFlusher() {
 	}
 }
 
-func (a *Accumulator[T]) flush(events []eventExtended[T]) {
+func (a *Accumulator[T]) flush(events []eventExtended) {
 	if len(events) == 0 {
 		return
 	}
 
 	originalEvents := make([]T, len(events))
 	for i := range events {
-		originalEvents[i] = events[i].e
+		originalEvents[i] = *(*T)(unsafe.Pointer(events[i].e))
 	}
 
 	err := a.flushFunc(originalEvents)
