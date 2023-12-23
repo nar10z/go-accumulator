@@ -53,8 +53,12 @@ func New[T any](
 		chEvents: make(chan eventExtended[T], flushSize),
 		batchEvents: sync.Pool{
 			New: func() any {
-				ss := make([]eventExtended[T], 0, flushSize)
-				return ss
+				return make([]eventExtended[T], 0, flushSize)
+			},
+		},
+		batchOrigEvents: sync.Pool{
+			New: func() any {
+				return make([]T, 0, flushSize)
 			},
 		},
 	}
@@ -71,8 +75,9 @@ type Accumulator[T any] struct {
 	size     int
 	interval time.Duration
 
-	chEvents    chan eventExtended[T]
-	batchEvents sync.Pool
+	chEvents        chan eventExtended[T]
+	batchEvents     sync.Pool
+	batchOrigEvents sync.Pool
 
 	isClose atomic.Bool
 	wgStop  sync.WaitGroup
@@ -121,13 +126,11 @@ func (a *Accumulator[T]) beforeAddCheck(ctx context.Context) error {
 }
 
 func (a *Accumulator[T]) Stop() {
-	if a.isClose.Load() {
+	if !a.isClose.CompareAndSwap(false, true) {
 		return
 	}
-	a.isClose.Store(true)
 
 	close(a.chEvents)
-
 	a.wgStop.Wait()
 }
 
@@ -182,9 +185,9 @@ func (a *Accumulator[T]) flush(events []eventExtended[T]) {
 		return
 	}
 
-	originalEvents := make([]T, len(events))
+	originalEvents, _ := a.batchOrigEvents.Get().([]T)
 	for i := range events {
-		originalEvents[i] = events[i].e
+		originalEvents = append(originalEvents, events[i].e)
 	}
 
 	err := a.flushFunc(originalEvents)
@@ -195,4 +198,6 @@ func (a *Accumulator[T]) flush(events []eventExtended[T]) {
 
 		e.fallback <- err
 	}
+
+	a.batchOrigEvents.Put(originalEvents[:0])
 }
