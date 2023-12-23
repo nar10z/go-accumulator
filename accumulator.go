@@ -20,13 +20,6 @@ const (
 	defaultFlushInterval = time.Millisecond * 250
 )
 
-// FlushExec a function to call when an action needs to be performed
-type FlushExec[T any] func(events []T) error
-
-func noop[T any](_ []T) error {
-	return nil
-}
-
 // New creates a new data Accumulator
 func New[T any](
 	flushSize uint,
@@ -84,7 +77,7 @@ type Accumulator[T any] struct {
 }
 
 func (a *Accumulator[T]) AddAsync(ctx context.Context, event T) error {
-	if err := a.beforeAddCheck(ctx); err != nil {
+	if err := a.check(ctx); err != nil {
 		return err
 	}
 
@@ -93,7 +86,7 @@ func (a *Accumulator[T]) AddAsync(ctx context.Context, event T) error {
 }
 
 func (a *Accumulator[T]) AddSync(ctx context.Context, event T) error {
-	if err := a.beforeAddCheck(ctx); err != nil {
+	if err := a.check(ctx); err != nil {
 		return err
 	}
 
@@ -112,7 +105,7 @@ func (a *Accumulator[T]) AddSync(ctx context.Context, event T) error {
 	}
 }
 
-func (a *Accumulator[T]) beforeAddCheck(ctx context.Context) error {
+func (a *Accumulator[T]) check(ctx context.Context) error {
 	if a.isClose.Load() {
 		return ErrSendToClose
 	}
