@@ -77,17 +77,29 @@ type Accumulator[T any] struct {
 }
 
 func (a *Accumulator[T]) AddAsync(ctx context.Context, event T) error {
-	if err := a.check(ctx); err != nil {
-		return err
+	if a.isClose.Load() {
+		return ErrSendToClose
 	}
 
-	a.chEvents <- eventExtended[T]{e: event}
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+		a.chEvents <- eventExtended[T]{e: event}
+	}
+
 	return nil
 }
 
 func (a *Accumulator[T]) AddSync(ctx context.Context, event T) error {
-	if err := a.check(ctx); err != nil {
-		return err
+	if a.isClose.Load() {
+		return ErrSendToClose
+	}
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
 	}
 
 	e := eventExtended[T]{
@@ -102,19 +114,6 @@ func (a *Accumulator[T]) AddSync(ctx context.Context, event T) error {
 	case <-ctx.Done():
 		e.fallback = nil
 		return ctx.Err()
-	}
-}
-
-func (a *Accumulator[T]) check(ctx context.Context) error {
-	if a.isClose.Load() {
-		return ErrSendToClose
-	}
-
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
-		return nil
 	}
 }
 

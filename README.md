@@ -57,7 +57,7 @@ func main() {
 		for _, e := range events {
 			fmt.Printf(" - %s\n", e)
 		}
-		fmt.Printf("Finish\n%s\n", strings.Repeat("-", 100))
+		fmt.Printf("Finish\n%s\n", strings.Repeat("-", 20))
 		return nil
 	})
 
