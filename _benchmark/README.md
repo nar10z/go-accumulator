@@ -42,8 +42,30 @@ PASS
 goos: windows
 goarch: amd64
 
-Benchmark_accum/go-accumulator,_async-12                 1000000               228.6 ns/op             8 B/op          0 allocs/op
-Benchmark_accum/lrweck/accumulator-12                    1000000               217.6 ns/op             0 B/op          0 allocs/op
-Benchmark_accum/go-accumulator,_sync-12                  1000000              1482 ns/op             179 B/op          3 allocs/op
-Benchmark_accum/go-accumulator-12                        1000000               883.9 ns/op            93 B/op          1 allocs/op
+Benchmark_accum
+Benchmark_accum/go-accumulator,_async
+Benchmark_accum/go-accumulator,_async-12                 1000000               152.1 ns/op             0 B/op          0 allocs/op
+Benchmark_accum/go-accumulator,_async-12                 1000000               197.0 ns/op             0 B/op          0 allocs/op
+Benchmark_accum/go-accumulator,_async-12                 1000000               133.0 ns/op             0 B/op          0 allocs/op
+Benchmark_accum/go-accumulator,_async-12                 1000000               151.5 ns/op             0 B/op          0 allocs/op
+Benchmark_accum/go-accumulator,_async-12                 1000000               177.0 ns/op             0 B/op          0 allocs/op
+Benchmark_accum/lrweck/accumulator
+Benchmark_accum/lrweck/accumulator-12                    1000000               172.0 ns/op             0 B/op          0 allocs/op
+Benchmark_accum/lrweck/accumulator-12                    1000000               163.0 ns/op             0 B/op          0 allocs/op
+Benchmark_accum/lrweck/accumulator-12                    1000000               163.0 ns/op             0 B/op          0 allocs/op
+Benchmark_accum/lrweck/accumulator-12                    1000000               162.0 ns/op             0 B/op          0 allocs/op
+Benchmark_accum/lrweck/accumulator-12                    1000000               170.0 ns/op             0 B/op          0 allocs/op
+Benchmark_accum/go-accumulator,_sync
+Benchmark_accum/go-accumulator,_sync-12                  1000000              1819 ns/op             192 B/op          3 allocs/op
+Benchmark_accum/go-accumulator,_sync-12                  1000000              1807 ns/op             190 B/op          3 allocs/op
+Benchmark_accum/go-accumulator,_sync-12                  1000000              1661 ns/op             184 B/op          3 allocs/op
+Benchmark_accum/go-accumulator,_sync-12                  1000000              1662 ns/op             185 B/op          3 allocs/op
+Benchmark_accum/go-accumulator,_sync-12                  1000000              1734 ns/op             186 B/op          3 allocs/op
+Benchmark_accum/go-accumulator
+Benchmark_accum/go-accumulator-12                        1000000              1175 ns/op             112 B/op          1 allocs/op
+Benchmark_accum/go-accumulator-12                        1000000               718.0 ns/op            63 B/op          1 allocs/op
+Benchmark_accum/go-accumulator-12                        1000000               313.0 ns/op            19 B/op          0 allocs/op
+Benchmark_accum/go-accumulator-12                        1000000               914.1 ns/op            82 B/op          1 allocs/op
+Benchmark_accum/go-accumulator-12                        1000000              1358 ns/op             125 B/op          2 allocs/op
+PASS
 ```
