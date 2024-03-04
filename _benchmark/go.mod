@@ -1,6 +1,6 @@
 module accumulator-example
 
-go 1.19
+go 1.20
 
 require (
 	github.com/lrweck/accumulator v0.0.0-20230204043344-6f6538ed8d35
