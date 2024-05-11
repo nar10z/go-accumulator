@@ -31,7 +31,7 @@ func Test_New(t *testing.T) {
 		require.NotNil(t, coll)
 
 		coll.Stop()
-		assert.True(t, coll.isClose.Load())
+		assert.True(t, coll.IsClosed())
 	})
 
 	t.Run("Empty params", func(t *testing.T) {
@@ -44,11 +44,21 @@ func Test_New(t *testing.T) {
 		assert.NotEmpty(t, coll.interval)
 		assert.NotEmpty(t, coll.flushFunc)
 
-		coll.Stop()
-		assert.True(t, coll.isClose.Load())
+		var (
+			wg         sync.WaitGroup
+			countStops = 100
+		)
 
-		coll.Stop()
-		assert.True(t, coll.isClose.Load())
+		wg.Add(countStops)
+		for i := 0; i < countStops; i++ {
+			go func() {
+				coll.Stop()
+				assert.True(t, coll.IsClosed())
+				wg.Done()
+			}()
+		}
+
+		wg.Wait()
 	})
 }
 
@@ -87,10 +97,12 @@ func Test_accumulator(t *testing.T) {
 		}
 
 		wgEvents.Wait()
+		require.False(t, coll.IsClosed())
 
 		coll.Stop()
 
 		require.Equal(t, countAsyncEvent*countWriters, summary)
+		require.True(t, coll.IsClosed())
 	})
 	t.Run("#1.2. Only sync", func(t *testing.T) {
 
