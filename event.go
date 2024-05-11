@@ -9,8 +9,8 @@
 package goaccum
 
 type eventExtended[T any] struct {
-	// return error of flush operation
-	fallback chan error
 	// original data
 	e T
+	// return error of flush operation
+	fallback chan error
 }

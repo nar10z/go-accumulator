@@ -175,17 +175,17 @@ func (a *Accumulator[T]) flush(events []eventExtended[T]) {
 	}
 
 	originalEvents, _ := a.batchOrigEvents.Get().([]T)
-	for i := range events {
+	for i := 0; i < len(events); i++ {
 		originalEvents = append(originalEvents, events[i].e)
 	}
 
 	err := a.flushFunc(originalEvents)
-	for _, e := range events {
-		if e.fallback == nil {
+	for i := 0; i < len(events); i++ {
+		if events[i].fallback == nil {
 			continue
 		}
 
-		e.fallback <- err
+		events[i].fallback <- err
 	}
 
 	a.batchOrigEvents.Put(originalEvents[:0])
