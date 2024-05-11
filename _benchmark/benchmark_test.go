@@ -35,7 +35,7 @@ func Benchmark_accum(b *testing.B) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	b.Run("go-accumulator, async", func(b *testing.B) {
+	b.Run("go-accumulator async", func(b *testing.B) {
 		summary := 0
 
 		b.ResetTimer()
@@ -80,7 +80,7 @@ func Benchmark_accum(b *testing.B) {
 		}
 	})
 
-	b.Run("go-accumulator, sync", func(b *testing.B) {
+	b.Run("go-accumulator sync", func(b *testing.B) {
 		summary := 0
 		errGr := errgroup.Group{}
 

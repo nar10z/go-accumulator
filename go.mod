@@ -3,8 +3,8 @@ module github.com/nar10z/go-accumulator
 go 1.19
 
 require (
-	github.com/stretchr/testify v1.8.4
-	golang.org/x/sync v0.6.0
+	github.com/stretchr/testify v1.9.0
+	golang.org/x/sync v0.7.0
 )
 
 require (

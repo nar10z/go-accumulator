@@ -54,30 +54,29 @@ func New[T any](
 				return make([]T, 0, flushSize)
 			},
 		},
+
+		chStop: make(chan struct{}),
 	}
 
-	a.wgStop.Add(1)
 	go a.startFlusher()
 
 	return a
 }
 
 type Accumulator[T any] struct {
-	flushFunc FlushExec[T]
-
-	size     int
-	interval time.Duration
-
-	chEvents        chan eventExtended[T]
 	batchEvents     sync.Pool
 	batchOrigEvents sync.Pool
-
-	isClose atomic.Bool
-	wgStop  sync.WaitGroup
+	flushFunc       FlushExec[T]
+	chEvents        chan eventExtended[T]
+	chStop          chan struct{}
+	size            int
+	interval        time.Duration
+	isClose         atomic.Bool
+	isCloseB        bool
 }
 
 func (a *Accumulator[T]) AddAsync(ctx context.Context, event T) error {
-	if a.isClose.Load() {
+	if a.isCloseB {
 		return ErrSendToClose
 	}
 
@@ -92,7 +91,7 @@ func (a *Accumulator[T]) AddAsync(ctx context.Context, event T) error {
 }
 
 func (a *Accumulator[T]) AddSync(ctx context.Context, event T) error {
-	if a.isClose.Load() {
+	if a.isCloseB {
 		return ErrSendToClose
 	}
 
@@ -122,31 +121,29 @@ func (a *Accumulator[T]) Stop() {
 		return
 	}
 
+	a.isCloseB = true
 	close(a.chEvents)
-	a.wgStop.Wait()
+	<-a.chStop
 }
 
-func (a *Accumulator[T]) newBatch() []eventExtended[T] {
-	ss, _ := a.batchEvents.Get().([]eventExtended[T])
-	return ss
-}
-
-func (a *Accumulator[T]) clearBatch(s []eventExtended[T]) {
-	a.batchEvents.Put(s[:0])
+func (a *Accumulator[T]) IsClosed() bool {
+	return a.isCloseB
 }
 
 func (a *Accumulator[T]) startFlusher() {
-	defer a.wgStop.Done()
+	defer func() {
+		a.chStop <- struct{}{}
+	}()
 
 	ticker := time.NewTicker(a.interval)
 	defer ticker.Stop()
 
-	batch := a.newBatch()
+	batch, _ := a.batchEvents.Get().([]eventExtended[T])
 
 	flush := func() {
 		a.flush(batch)
-		a.clearBatch(batch)
-		batch = a.newBatch()
+		a.batchEvents.Put(batch[:0])
+		batch, _ = a.batchEvents.Get().([]eventExtended[T])
 	}
 
 	for {
