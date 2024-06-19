@@ -72,11 +72,10 @@ type Accumulator[T any] struct {
 	size            int
 	interval        time.Duration
 	isClose         atomic.Bool
-	isCloseB        bool
 }
 
 func (a *Accumulator[T]) AddAsync(ctx context.Context, event T) error {
-	if a.isCloseB {
+	if a.isClose.Load() {
 		return ErrSendToClose
 	}
 
@@ -91,7 +90,7 @@ func (a *Accumulator[T]) AddAsync(ctx context.Context, event T) error {
 }
 
 func (a *Accumulator[T]) AddSync(ctx context.Context, event T) error {
-	if a.isCloseB {
+	if a.isClose.Load() {
 		return ErrSendToClose
 	}
 
@@ -129,13 +128,12 @@ func (a *Accumulator[T]) Stop() {
 		return
 	}
 
-	a.isCloseB = true
 	close(a.chEvents)
 	<-a.chStop
 }
 
 func (a *Accumulator[T]) IsClosed() bool {
-	return a.isCloseB
+	return a.isClose.Load()
 }
 
 func (a *Accumulator[T]) startFlusher() {
