@@ -95,6 +95,7 @@ func (a *Accumulator[T]) AddSync(ctx context.Context, event T) error {
 		return ErrSendToClose
 	}
 
+	// check context before alloc eventExtended
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
@@ -105,8 +106,15 @@ func (a *Accumulator[T]) AddSync(ctx context.Context, event T) error {
 		fallback: make(chan error),
 		e:        event,
 	}
-	a.chEvents <- e
 
+	// check context with write to channel
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case a.chEvents <- e:
+	}
+
+	// check context with wait event result
 	select {
 	case err := <-e.fallback:
 		return err
