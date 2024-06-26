@@ -10,6 +10,7 @@ package goaccum
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -81,7 +82,7 @@ func (a *Accumulator[T]) AddAsync(ctx context.Context, event T) error {
 
 	select {
 	case <-ctx.Done():
-		return ctx.Err()
+		return fmt.Errorf("AddAsync, check on write: %w", ctx.Err())
 	default:
 		a.chEvents <- eventExtended[T]{e: event}
 	}
@@ -97,7 +98,7 @@ func (a *Accumulator[T]) AddSync(ctx context.Context, event T) error {
 	// check context before alloc eventExtended
 	select {
 	case <-ctx.Done():
-		return ctx.Err()
+		return fmt.Errorf("AddSync, check before: %w", ctx.Err())
 	default:
 	}
 
@@ -109,17 +110,21 @@ func (a *Accumulator[T]) AddSync(ctx context.Context, event T) error {
 	// check context with write to channel
 	select {
 	case <-ctx.Done():
-		return ctx.Err()
+		return fmt.Errorf("AddSync, check on write: %w", ctx.Err())
 	case a.chEvents <- e:
 	}
 
 	// check context with wait event result
 	select {
 	case err := <-e.fallback:
-		return err
+		if err != nil {
+			return fmt.Errorf("AddSync, check on write: %w", err)
+		}
+
+		return nil
 	case <-ctx.Done():
 		e.fallback = nil
-		return ctx.Err()
+		return fmt.Errorf("AddSync, check fallback: %w", ctx.Err())
 	}
 }
 
@@ -167,8 +172,6 @@ func (a *Accumulator[T]) startFlusher() {
 			}
 
 			flush()
-
-			ticker.Reset(a.interval)
 		case <-ticker.C:
 			flush()
 		}
