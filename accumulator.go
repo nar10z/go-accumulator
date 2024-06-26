@@ -118,7 +118,7 @@ func (a *Accumulator[T]) AddSync(ctx context.Context, event T) error {
 	select {
 	case err := <-e.fallback:
 		if err != nil {
-			return fmt.Errorf("AddSync, check on write: %w", err)
+			return fmt.Errorf("AddSync, check fallback: %w", err)
 		}
 
 		return nil
