@@ -40,8 +40,6 @@ func Test_New(t *testing.T) {
 		coll := New[int](0, 0, nil)
 		require.NotNil(t, coll)
 
-		assert.NotEmpty(t, coll.size)
-		assert.NotEmpty(t, coll.interval)
 		assert.NotEmpty(t, coll.flushFunc)
 
 		var (

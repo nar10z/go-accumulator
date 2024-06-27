@@ -41,8 +41,6 @@ func New[T any](
 
 	a := &Accumulator[T]{
 		flushFunc: flushFunc,
-		size:      int(flushSize),
-		interval:  flushInterval,
 
 		chEvents: make(chan eventExtended[T], flushSize),
 		batchEvents: sync.Pool{
@@ -59,7 +57,7 @@ func New[T any](
 		chStop: make(chan struct{}),
 	}
 
-	go a.startFlusher()
+	go a.startFlusher(flushInterval, int(flushSize))
 
 	return a
 }
@@ -70,8 +68,6 @@ type Accumulator[T any] struct {
 	flushFunc       FlushExec[T]
 	chEvents        chan eventExtended[T]
 	chStop          chan struct{}
-	size            int
-	interval        time.Duration
 	isClose         atomic.Bool
 }
 
@@ -141,33 +137,25 @@ func (a *Accumulator[T]) IsClosed() bool {
 	return a.isClose.Load()
 }
 
-func (a *Accumulator[T]) startFlusher() {
-	defer func() {
-		a.chStop <- struct{}{}
-	}()
-
-	ticker := time.NewTicker(a.interval)
-	defer ticker.Stop()
-
+func (a *Accumulator[T]) startFlusher(interval time.Duration, size int) {
+	ticker := time.NewTicker(interval)
 	batch, _ := a.batchEvents.Get().([]eventExtended[T])
-
 	flush := func() {
 		a.flush(batch)
 		a.batchEvents.Put(batch[:0])
 		batch, _ = a.batchEvents.Get().([]eventExtended[T])
 	}
 
+loop:
 	for {
 		select {
 		case e, ok := <-a.chEvents:
 			if !ok {
-				a.chEvents = nil
-				flush()
-				return
+				break loop
 			}
 
 			batch = append(batch, e)
-			if len(batch) < a.size {
+			if len(batch) < size {
 				continue
 			}
 
@@ -176,6 +164,11 @@ func (a *Accumulator[T]) startFlusher() {
 			flush()
 		}
 	}
+
+	ticker.Stop()
+	a.chEvents = nil
+	flush()
+	a.chStop <- struct{}{}
 }
 
 func (a *Accumulator[T]) flush(events []eventExtended[T]) {
