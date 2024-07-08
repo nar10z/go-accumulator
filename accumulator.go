@@ -87,10 +87,6 @@ func (a *Accumulator[T]) AddAsync(ctx context.Context, event T) error {
 }
 
 func (a *Accumulator[T]) AddSync(ctx context.Context, event T) error {
-	if a.isClose.Load() {
-		return ErrSendToClose
-	}
-
 	// check context before alloc eventExtended
 	select {
 	case <-ctx.Done():
@@ -101,6 +97,10 @@ func (a *Accumulator[T]) AddSync(ctx context.Context, event T) error {
 	e := eventExtended[T]{
 		fallback: make(chan error),
 		e:        event,
+	}
+
+	if a.isClose.Load() {
+		return ErrSendToClose
 	}
 
 	// check context with write to channel
