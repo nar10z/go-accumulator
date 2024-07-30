@@ -27,7 +27,7 @@ func Test_New(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		t.Parallel()
 
-		coll := New[int](10, time.Millisecond, func(events []int) error { return nil })
+		coll := New[int](10, time.Millisecond, time.Second, func(_ context.Context, events []int) error { return nil })
 		require.NotNil(t, coll)
 
 		coll.Stop()
@@ -37,7 +37,7 @@ func Test_New(t *testing.T) {
 	t.Run("Empty params", func(t *testing.T) {
 		t.Parallel()
 
-		coll := New[int](0, 0, nil)
+		coll := New[int](0, 0, 0, nil)
 		require.NotNil(t, coll)
 
 		assert.NotEmpty(t, coll.flushFunc)
@@ -74,7 +74,7 @@ func Test_accumulator(t *testing.T) {
 			summary         = 0
 		)
 
-		coll := New(100, time.Millisecond*50, func(events []int) error {
+		coll := New(100, time.Millisecond*50, time.Millisecond*10, func(_ context.Context, events []int) error {
 			summary += len(events)
 			return nil
 		})
@@ -109,7 +109,7 @@ func Test_accumulator(t *testing.T) {
 			summary        = 0
 		)
 
-		coll := New(100, time.Millisecond*100, func(events []int) error {
+		coll := New(100, time.Millisecond*100, time.Millisecond*10, func(_ context.Context, events []int) error {
 			summary += len(events)
 			return nil
 		})
@@ -138,7 +138,7 @@ func Test_accumulator(t *testing.T) {
 			summary         = 0
 		)
 
-		coll := New(1000, time.Millisecond*100, func(events []int) error {
+		coll := New(1000, time.Millisecond*100, time.Millisecond*10, func(_ context.Context, events []int) error {
 			summary += len(events)
 			return nil
 		})
@@ -186,7 +186,7 @@ func Test_accumulator(t *testing.T) {
 			summary         = 0
 		)
 
-		coll := New(1000, time.Minute*10, func(events []int) error {
+		coll := New(1000, time.Minute*10, time.Millisecond*10, func(_ context.Context, events []int) error {
 			summary += len(events)
 			return nil
 		})
@@ -233,7 +233,7 @@ func Test_accumulator(t *testing.T) {
 			summary         = 0
 		)
 
-		coll := New(1000000, time.Millisecond*50, func(events []int) error {
+		coll := New(1000000, time.Millisecond*50, time.Millisecond*10, func(_ context.Context, events []int) error {
 			summary += len(events)
 			return nil
 		})
@@ -281,7 +281,7 @@ func Test_accumulator(t *testing.T) {
 			summary         = 0
 		)
 
-		coll := New(1000, time.Millisecond*100, func(events []int) error {
+		coll := New(1000, time.Millisecond*100, time.Millisecond*10, func(_ context.Context, events []int) error {
 			summary += len(events)
 			return nil
 		})
@@ -307,7 +307,7 @@ func Test_accumulator(t *testing.T) {
 			summary        = 0
 		)
 
-		coll := New(100, time.Millisecond*100, func(events []int) error {
+		coll := New(100, time.Millisecond*100, time.Millisecond*10, func(_ context.Context, events []int) error {
 			summary += len(events)
 			return nil
 		})
@@ -337,7 +337,7 @@ func Test_accumulator(t *testing.T) {
 			summary         = 0
 		)
 
-		coll := New(1000, time.Millisecond*100, func(events []int) error {
+		coll := New(1000, time.Millisecond*100, time.Millisecond*10, func(_ context.Context, events []int) error {
 			summary += len(events)
 			return nil
 		})
@@ -379,7 +379,7 @@ func Test_accumulator(t *testing.T) {
 	t.Run("#2.6. Failed flush", func(t *testing.T) {
 		var wantErr = errors.New("some")
 
-		coll := New(2, time.Millisecond*10, func(events []int) error {
+		coll := New(2, time.Millisecond*10, time.Millisecond*10, func(_ context.Context, events []int) error {
 			return wantErr
 		})
 
@@ -397,7 +397,7 @@ func Test_accumulator(t *testing.T) {
 			want   = []int{0, 1, 2, 3, 4}
 		)
 
-		coll := New(2, time.Millisecond*10, func(events []int) error {
+		coll := New(2, time.Millisecond*10, time.Millisecond*10, func(_ context.Context, events []int) error {
 			result = append(result, events...)
 			return nil
 		})

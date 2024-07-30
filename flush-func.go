@@ -8,9 +8,11 @@
 
 package goaccum
 
-// FlushExec a function to call when an action needs to be performed
-type FlushExec[T any] func(events []T) error
+import "context"
 
-func noop[T any](_ []T) error {
+// FlushExec a function to call when an action needs to be performed
+type FlushExec[T any] func(ctx context.Context, events []T) error
+
+func noop[T any](_ context.Context, _ []T) error {
 	return nil
 }
