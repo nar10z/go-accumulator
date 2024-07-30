@@ -27,7 +27,7 @@ func main() {
 		countAsync = 3
 	)
 
-	accumulator := goaccum.New[string](3, time.Second, func(events []string) error {
+	accumulator := goaccum.New[string](3, time.Second, 200*time.Millisecond, func(ctx context.Context, events []string) error {
 		fmt.Printf("Start flush %d events:\n", len(events))
 		for _, e := range events {
 			fmt.Printf(" - %s\n", e)
