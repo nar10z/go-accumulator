@@ -15,6 +15,7 @@ import (
 const (
 	flushSize     = 5000
 	flushInterval = time.Millisecond * 50
+	flushTimout   = time.Millisecond * 40
 )
 
 type Data struct {
@@ -40,7 +41,7 @@ func Benchmark_accum(b *testing.B) {
 
 		b.ResetTimer()
 
-		accumulator := goaccum.New[Data](flushSize, flushInterval, func(events []Data) error {
+		accumulator := goaccum.New[Data](flushSize, flushInterval, flushTimout, func(_ context.Context, events []Data) error {
 			summary += len(events)
 			return nil
 		})
@@ -88,7 +89,7 @@ func Benchmark_accum(b *testing.B) {
 
 		b.ResetTimer()
 
-		accumulator := goaccum.New[Data](flushSize, flushInterval, func(events []Data) error {
+		accumulator := goaccum.New[Data](flushSize, flushInterval, flushTimout, func(_ context.Context, events []Data) error {
 			summary += len(events)
 			return nil
 		})
@@ -118,7 +119,7 @@ func Benchmark_accum(b *testing.B) {
 
 		b.ResetTimer()
 
-		accumulator := goaccum.New[Data](flushSize, flushInterval, func(events []Data) error {
+		accumulator := goaccum.New[Data](flushSize, flushInterval, flushTimout, func(_ context.Context, events []Data) error {
 			summary += len(events)
 			return nil
 		})

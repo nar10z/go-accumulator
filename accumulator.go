@@ -25,6 +25,7 @@ const (
 func New[T any](
 	flushSize uint,
 	flushInterval time.Duration,
+	flushTimeout time.Duration,
 	flushFunc FlushExec[T],
 ) *Accumulator[T] {
 	if flushSize == 0 {
@@ -35,12 +36,17 @@ func New[T any](
 		flushInterval = defaultFlushInterval
 	}
 
+	if flushTimeout == 0 {
+		flushTimeout = flushInterval
+	}
+
 	if flushFunc == nil {
 		flushFunc = noop[T]
 	}
 
 	a := &Accumulator[T]{
-		flushFunc: flushFunc,
+		flushFunc:    flushFunc,
+		flushTimeout: flushTimeout,
 
 		chEvents: make(chan eventExtended[T], flushSize),
 		batchEvents: sync.Pool{
@@ -66,15 +72,23 @@ type Accumulator[T any] struct {
 	batchEvents     sync.Pool
 	batchOrigEvents sync.Pool
 	flushFunc       FlushExec[T]
+	flushTimeout    time.Duration
 	chEvents        chan eventExtended[T]
 	chStop          chan struct{}
 	isClose         atomic.Bool
 }
 
-func (a *Accumulator[T]) AddAsync(ctx context.Context, event T) error {
+func (a *Accumulator[T]) AddAsync(ctx context.Context, event T) (err error) {
 	if a.isClose.Load() {
 		return ErrSendToClose
 	}
+
+	defer func() {
+		// recover from panic caused by writing to a closed channel
+		if r := recover(); r != nil {
+			err = fmt.Errorf("AddSync, recover: %v", r)
+		}
+	}()
 
 	select {
 	case <-ctx.Done():
@@ -86,7 +100,7 @@ func (a *Accumulator[T]) AddAsync(ctx context.Context, event T) error {
 	return nil
 }
 
-func (a *Accumulator[T]) AddSync(ctx context.Context, event T) error {
+func (a *Accumulator[T]) AddSync(ctx context.Context, event T) (err error) {
 	// check context before alloc eventExtended
 	select {
 	case <-ctx.Done():
@@ -103,6 +117,13 @@ func (a *Accumulator[T]) AddSync(ctx context.Context, event T) error {
 		return ErrSendToClose
 	}
 
+	defer func() {
+		// recover from panic caused by writing to a closed channel
+		if r := recover(); r != nil {
+			err = fmt.Errorf("AddSync, recover: %v", r)
+		}
+	}()
+
 	// check context with write to channel
 	select {
 	case <-ctx.Done():
@@ -112,14 +133,13 @@ func (a *Accumulator[T]) AddSync(ctx context.Context, event T) error {
 
 	// check context with wait event result
 	select {
-	case err := <-e.fallback:
+	case err = <-e.fallback:
 		if err != nil {
 			return fmt.Errorf("AddSync, check fallback: %w", err)
 		}
 
 		return nil
 	case <-ctx.Done():
-		e.fallback = nil
 		return fmt.Errorf("AddSync, check fallback: %w", ctx.Err())
 	}
 }
@@ -176,12 +196,15 @@ func (a *Accumulator[T]) flush(events []eventExtended[T]) {
 		return
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), a.flushTimeout)
+	defer cancel()
+
 	originalEvents, _ := a.batchOrigEvents.Get().([]T)
 	for i := 0; i < len(events); i++ {
 		originalEvents = append(originalEvents, events[i].e)
 	}
 
-	err := a.flushFunc(originalEvents)
+	err := a.flushFunc(ctx, originalEvents)
 	for i := 0; i < len(events); i++ {
 		if events[i].fallback == nil {
 			continue
