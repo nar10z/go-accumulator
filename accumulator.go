@@ -189,7 +189,6 @@ loop:
 	}
 
 	ticker.Stop()
-	a.chEvents = nil
 	flush()
 	a.chStop <- struct{}{}
 }
