@@ -71,11 +71,14 @@ func New[T any](
 type Accumulator[T any] struct {
 	batchEvents     sync.Pool
 	batchOrigEvents sync.Pool
-	flushFunc       FlushExec[T]
-	flushTimeout    time.Duration
-	chEvents        chan eventExtended[T]
-	chStop          chan struct{}
-	isClose         atomic.Bool
+
+	flushFunc    FlushExec[T]
+	flushTimeout time.Duration
+
+	chEvents chan eventExtended[T]
+	chStop   chan struct{}
+
+	isClose atomic.Bool
 }
 
 func (a *Accumulator[T]) AddAsync(ctx context.Context, event T) (err error) {
@@ -109,7 +112,7 @@ func (a *Accumulator[T]) AddSync(ctx context.Context, event T) (err error) {
 	}
 
 	e := eventExtended[T]{
-		fallback: make(chan error),
+		fallback: make(chan error, 1),
 		e:        event,
 	}
 
@@ -209,7 +212,10 @@ func (a *Accumulator[T]) flush(events []eventExtended[T]) {
 			continue
 		}
 
-		events[i].fallback <- err
+		select {
+		case events[i].fallback <- err:
+		default:
+		}
 	}
 
 	a.batchOrigEvents.Put(originalEvents[:0])
