@@ -11,9 +11,10 @@ package goaccum
 import (
 	"context"
 	"fmt"
-	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/bytedance/gopkg/lang/syncx"
 )
 
 const (
@@ -49,15 +50,17 @@ func New[T any](
 		flushTimeout: flushTimeout,
 
 		chEvents: make(chan eventExtended[T], flushSize),
-		batchEvents: sync.Pool{
+		batchEvents: syncx.Pool{
 			New: func() any {
 				return make([]eventExtended[T], 0, flushSize)
 			},
+			NoGC: true,
 		},
-		batchOrigEvents: sync.Pool{
+		batchOrigEvents: syncx.Pool{
 			New: func() any {
 				return make([]T, 0, flushSize)
 			},
+			NoGC: true,
 		},
 
 		chStop: make(chan struct{}),
@@ -69,8 +72,8 @@ func New[T any](
 }
 
 type Accumulator[T any] struct {
-	batchEvents     sync.Pool
-	batchOrigEvents sync.Pool
+	batchEvents     syncx.Pool
+	batchOrigEvents syncx.Pool
 
 	flushFunc    FlushExec[T]
 	flushTimeout time.Duration
