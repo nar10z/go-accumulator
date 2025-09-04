@@ -8,4 +8,9 @@ require (
 	golang.org/x/sync v0.16.0
 )
 
+require (
+	github.com/bytedance/gopkg v0.1.3 // indirect
+	golang.org/x/sys v0.19.0 // indirect
+)
+
 replace github.com/nar10z/go-accumulator => ../
