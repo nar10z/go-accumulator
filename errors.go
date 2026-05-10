@@ -12,5 +12,5 @@ import "errors"
 
 var (
 	// ErrSendToClose ...
-	ErrSendToClose = errors.New("send to close accumulator")
+	ErrSendToClose = errors.New("accumulator is closed")
 )

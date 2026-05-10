@@ -124,25 +124,21 @@ func Benchmark_accum(b *testing.B) {
 			return nil
 		})
 
-		wg.Add(1)
-		go func() {
-			for i := 0; i < n1; i++ {
+		wg.Go(func() {
+			for i := range n1 {
 				_ = accumulator.AddAsync(ctx, newData(i))
 			}
 
-			wg.Done()
-		}()
+		})
 
-		wg.Add(1)
-		go func() {
-			for i := 0; i < n2; i++ {
+		wg.Go(func() {
+			for i := range n2 {
 				errGr.Go(func() error {
 					return accumulator.AddSync(ctx, newData(i))
 				})
 			}
 
-			wg.Done()
-		}()
+		})
 
 		wg.Wait()
 

@@ -11,7 +11,7 @@ package goaccum
 import (
 	"context"
 	"errors"
-	"sort"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -48,7 +48,7 @@ func Test_New(t *testing.T) {
 		)
 
 		wg.Add(countStops)
-		for i := 0; i < countStops; i++ {
+		for range countStops {
 			go func() {
 				coll.Stop()
 				assert.True(t, coll.IsClosed())
@@ -83,15 +83,13 @@ func Test_accumulator(t *testing.T) {
 
 		var wgEvents sync.WaitGroup
 
-		for i := 0; i < countWriters; i++ {
-			wgEvents.Add(1)
-			go func() {
-				defer wgEvents.Done()
+		for range countWriters {
+			wgEvents.Go(func() {
 
-				for i := 0; i < countAsyncEvent; i++ {
+				for i := range countAsyncEvent {
 					require.NoError(t, coll.AddAsync(ctx, i))
 				}
-			}()
+			})
 		}
 
 		wgEvents.Wait()
@@ -119,7 +117,7 @@ func Test_accumulator(t *testing.T) {
 		var errGr errgroup.Group
 		errGr.SetLimit(5000)
 
-		for i := 0; i < countSyncEvent; i++ {
+		for range countSyncEvent {
 			errGr.Go(func() error {
 				return coll.AddSync(ctx, 1)
 			})
@@ -147,30 +145,26 @@ func Test_accumulator(t *testing.T) {
 
 		var wgEvents sync.WaitGroup
 
-		wgEvents.Add(1)
-		go func() {
-			defer wgEvents.Done()
+		wgEvents.Go(func() {
 
-			for i := 0; i < countAsyncEvent; i++ {
+			for i := range countAsyncEvent {
 				require.NoError(t, coll.AddAsync(ctx, i))
 			}
-		}()
+		})
 
-		wgEvents.Add(1)
-		go func() {
-			defer wgEvents.Done()
+		wgEvents.Go(func() {
 
 			var errGr errgroup.Group
 			errGr.SetLimit(5000)
 
-			for i := 0; i < countSyncEvent; i++ {
+			for i := range countSyncEvent {
 				i := i
 				errGr.Go(func() error {
 					return coll.AddSync(ctx, i)
 				})
 			}
 			require.NoError(t, errGr.Wait())
-		}()
+		})
 
 		wgEvents.Wait()
 		coll.Stop()
@@ -195,30 +189,26 @@ func Test_accumulator(t *testing.T) {
 
 		var wgEvents sync.WaitGroup
 
-		wgEvents.Add(1)
-		go func() {
-			defer wgEvents.Done()
+		wgEvents.Go(func() {
 
-			for i := 0; i < countAsyncEvent; i++ {
+			for i := range countAsyncEvent {
 				require.NoError(t, coll.AddAsync(ctx, i))
 			}
-		}()
+		})
 
-		wgEvents.Add(1)
-		go func() {
-			defer wgEvents.Done()
+		wgEvents.Go(func() {
 
 			var errGr errgroup.Group
 			errGr.SetLimit(5000)
 
-			for i := 0; i < countSyncEvent; i++ {
+			for i := range countSyncEvent {
 				i := i
 				errGr.Go(func() error {
 					return coll.AddSync(ctx, i)
 				})
 			}
 			require.NoError(t, errGr.Wait())
-		}()
+		})
 
 		wgEvents.Wait()
 		coll.Stop()
@@ -242,30 +232,26 @@ func Test_accumulator(t *testing.T) {
 
 		var wgEvents sync.WaitGroup
 
-		wgEvents.Add(1)
-		go func() {
-			defer wgEvents.Done()
+		wgEvents.Go(func() {
 
-			for i := 0; i < countAsyncEvent; i++ {
+			for i := range countAsyncEvent {
 				require.NoError(t, coll.AddAsync(ctx, i))
 			}
-		}()
+		})
 
-		wgEvents.Add(1)
-		go func() {
-			defer wgEvents.Done()
+		wgEvents.Go(func() {
 
 			var errGr errgroup.Group
 			errGr.SetLimit(5000)
 
-			for i := 0; i < countSyncEvent; i++ {
+			for i := range countSyncEvent {
 				i := i
 				errGr.Go(func() error {
 					return coll.AddSync(ctx, i)
 				})
 			}
 			require.NoError(t, errGr.Wait())
-		}()
+		})
 
 		wgEvents.Wait()
 		coll.Stop()
@@ -290,7 +276,7 @@ func Test_accumulator(t *testing.T) {
 
 		time.Sleep(10 * time.Microsecond)
 
-		for i := 0; i < countAsyncEvent; i++ {
+		for i := range countAsyncEvent {
 			require.Error(t, coll.AddAsync(ctx, i))
 		}
 
@@ -318,7 +304,7 @@ func Test_accumulator(t *testing.T) {
 
 		var errGr errgroup.Group
 		errGr.SetLimit(50)
-		for i := 0; i < countSyncEvent; i++ {
+		for i := range countSyncEvent {
 			i := i
 			errGr.Go(func() error {
 				return coll.AddSync(ctxIn, i)
@@ -347,30 +333,26 @@ func Test_accumulator(t *testing.T) {
 
 		var wgEvents sync.WaitGroup
 
-		wgEvents.Add(1)
-		go func() {
-			defer wgEvents.Done()
+		wgEvents.Go(func() {
 
-			for i := 0; i < countAsyncEvent; i++ {
+			for i := range countAsyncEvent {
 				require.Error(t, coll.AddAsync(ctx, i))
 			}
-		}()
+		})
 
-		wgEvents.Add(1)
-		go func() {
-			defer wgEvents.Done()
+		wgEvents.Go(func() {
 
 			var errGr errgroup.Group
 			errGr.SetLimit(5000)
 
-			for i := 0; i < countSyncEvent; i++ {
+			for i := range countSyncEvent {
 				i := i
 				errGr.Go(func() error {
 					return coll.AddSync(ctx, i)
 				})
 			}
 			require.Error(t, errGr.Wait())
-		}()
+		})
 
 		wgEvents.Wait()
 
@@ -407,7 +389,7 @@ func Test_accumulator(t *testing.T) {
 		var errGr errgroup.Group
 		errGr.SetLimit(5)
 
-		for i := 0; i < 5; i++ {
+		for i := range 5 {
 			i := i
 			errGr.Go(func() error {
 				return coll.AddSync(ctx, i)
@@ -417,9 +399,7 @@ func Test_accumulator(t *testing.T) {
 
 		coll.Stop()
 
-		sort.Slice(result, func(i, j int) bool {
-			return result[i] < result[j]
-		})
+		slices.Sort(result)
 
 		require.Equal(t, result, want)
 	})

@@ -200,12 +200,12 @@ func (a *Accumulator[T]) flush(events []eventExtended[T]) {
 	defer cancel()
 
 	originalEvents, _ := a.batchOrigEvents.Get().([]T)
-	for i := 0; i < len(events); i++ {
+	for i := range events {
 		originalEvents = append(originalEvents, events[i].e)
 	}
 
 	err := a.flushFunc(ctx, originalEvents)
-	for i := 0; i < len(events); i++ {
+	for i := range events {
 		if events[i].fallback == nil {
 			continue
 		}
