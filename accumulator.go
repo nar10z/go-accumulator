@@ -90,6 +90,10 @@ func (a *Accumulator[T]) AddAsync(ctx context.Context, event T) (err error) {
 		return ErrSendToClose
 	}
 
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		return fmt.Errorf("AddAsync, check on write: %w", ctxErr)
+	}
+
 	defer func() {
 		// recover from panic caused by writing to a closed channel
 		if r := recover(); r != nil {
@@ -100,26 +104,21 @@ func (a *Accumulator[T]) AddAsync(ctx context.Context, event T) (err error) {
 	select {
 	case <-ctx.Done():
 		return fmt.Errorf("AddAsync, check on write: %w", ctx.Err())
-	default:
-		a.chEvents <- eventExtended[T]{e: event}
+	case a.chEvents <- eventExtended[T]{e: event}:
+		return nil
 	}
-
-	return nil
 }
 
 // AddSync adds an event and blocks until the batch containing the event has been flushed.
 // Returns an error if the accumulator is closed (ErrSendToClose) or the context is canceled.
 // It returns a flushFunc error or a context error.
 func (a *Accumulator[T]) AddSync(ctx context.Context, event T) (err error) {
-	// check context before alloc eventExtended
-	select {
-	case <-ctx.Done():
-		return fmt.Errorf("AddSync, check before: %w", ctx.Err())
-	default:
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		return fmt.Errorf("AddSync, check before: %w", ctxErr)
 	}
 
 	e := eventExtended[T]{
-		fallback: make(chan error),
+		fallback: make(chan error, 1),
 		e:        event,
 	}
 
@@ -199,7 +198,6 @@ loop:
 	}
 
 	ticker.Stop()
-	a.chEvents = nil
 	flush()
 	a.chDone <- struct{}{}
 }

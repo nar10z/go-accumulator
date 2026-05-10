@@ -63,11 +63,10 @@ func Test_New(t *testing.T) {
 func Test_accumulator(t *testing.T) {
 	t.Parallel()
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
 	defer cancel()
 
 	t.Run("#1.1. Only async", func(t *testing.T) {
-
 		var (
 			countWriters    = 2
 			countAsyncEvent = 113
@@ -101,7 +100,6 @@ func Test_accumulator(t *testing.T) {
 		require.True(t, coll.IsClosed())
 	})
 	t.Run("#1.2. Only sync", func(t *testing.T) {
-
 		var (
 			countSyncEvent = 3851
 			summary        = 0
@@ -129,7 +127,6 @@ func Test_accumulator(t *testing.T) {
 		require.Equal(t, countSyncEvent, summary)
 	})
 	t.Run("#1.3. Async and sync", func(t *testing.T) {
-
 		var (
 			countSyncEvent  = 2454
 			countAsyncEvent = 3913
@@ -173,7 +170,6 @@ func Test_accumulator(t *testing.T) {
 	})
 
 	t.Run("#2.1. Long interval", func(t *testing.T) {
-
 		var (
 			countSyncEvent  = 1200
 			countAsyncEvent = 6300
@@ -216,7 +212,6 @@ func Test_accumulator(t *testing.T) {
 		require.Equal(t, countSyncEvent+countAsyncEvent, summary)
 	})
 	t.Run("#2.2. Big size", func(t *testing.T) {
-
 		var (
 			countSyncEvent  = 1200
 			countAsyncEvent = 6300
@@ -258,9 +253,9 @@ func Test_accumulator(t *testing.T) {
 
 		require.Equal(t, countSyncEvent+countAsyncEvent, summary)
 	})
-	t.Run("#2.3. Context deadline", func(t *testing.T) {
-		ctx, cancel := context.WithTimeout(ctx, time.Microsecond)
-		defer cancel()
+	t.Run("#2.3. Context deadline async", func(t *testing.T) {
+		ctxIn, cancelIn := context.WithTimeout(ctx, time.Nanosecond)
+		defer cancelIn()
 
 		var (
 			countAsyncEvent = 100
@@ -274,17 +269,17 @@ func Test_accumulator(t *testing.T) {
 
 		require.NotNil(t, coll)
 
-		time.Sleep(10 * time.Microsecond)
+		time.Sleep(time.Second)
 
 		for i := range countAsyncEvent {
-			require.Error(t, coll.AddAsync(ctx, i))
+			require.Error(t, coll.AddAsync(ctxIn, i))
 		}
 
 		coll.Stop()
 
 		require.Equal(t, 0, summary)
 	})
-	t.Run("#2.4. Context deadline", func(t *testing.T) {
+	t.Run("#2.4. Context deadline sync", func(t *testing.T) {
 		ctxIn, cancelIn := context.WithTimeout(ctx, time.Nanosecond)
 		defer cancelIn()
 
@@ -300,7 +295,7 @@ func Test_accumulator(t *testing.T) {
 
 		require.NotNil(t, coll)
 
-		time.Sleep(10 * time.Microsecond)
+		time.Sleep(time.Second)
 
 		var errGr errgroup.Group
 		errGr.SetLimit(50)
