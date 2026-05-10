@@ -33,15 +33,15 @@ func New[T any](
 	flushTimeout time.Duration,
 	flushFunc FlushExec[T],
 ) *Accumulator[T] {
-	if flushSize == 0 {
+	if flushSize <= 0 {
 		flushSize = defaultFlushSize
 	}
 
-	if flushInterval == 0 {
+	if flushInterval <= 0 {
 		flushInterval = defaultFlushInterval
 	}
 
-	if flushTimeout == 0 {
+	if flushTimeout <= 0 {
 		flushTimeout = flushInterval
 	}
 
