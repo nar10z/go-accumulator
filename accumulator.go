@@ -93,7 +93,7 @@ func (a *Accumulator[T]) AddAsync(ctx context.Context, event T) (err error) {
 	defer func() {
 		// recover from panic caused by writing to a closed channel
 		if r := recover(); r != nil {
-			err = fmt.Errorf("AddSync, recover: %v", r)
+			err = fmt.Errorf("AddAsync, recover: %v", r)
 		}
 	}()
 
