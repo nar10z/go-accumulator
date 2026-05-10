@@ -11,6 +11,7 @@ package goaccum
 import (
 	"context"
 	"fmt"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -22,22 +23,27 @@ const (
 	defaultFlushInterval = time.Millisecond * 250
 )
 
-// New creates a new data Accumulator
+// New creates a new Accumulator.
+//
+//   - flushSize: maximum batch size (0 = 1000).
+//   - flushInterval: interval between flushes (0 = 250ms).
+//   - flushTimeout: timeout for executing flushFunc (0 = flushInterval).
+//   - flushFunc: batch processing function. Cannot be nil.
 func New[T any](
 	flushSize uint,
 	flushInterval time.Duration,
 	flushTimeout time.Duration,
 	flushFunc FlushExec[T],
 ) *Accumulator[T] {
-	if flushSize == 0 {
+	if flushSize <= 0 {
 		flushSize = defaultFlushSize
 	}
 
-	if flushInterval == 0 {
+	if flushInterval <= 0 {
 		flushInterval = defaultFlushInterval
 	}
 
-	if flushTimeout == 0 {
+	if flushTimeout <= 0 {
 		flushTimeout = flushInterval
 	}
 
@@ -63,7 +69,7 @@ func New[T any](
 			NoGC: true,
 		},
 
-		chStop: make(chan struct{}),
+		chDone: make(chan struct{}),
 	}
 
 	go a.startFlusher(flushInterval, int(flushSize))
@@ -79,39 +85,47 @@ type Accumulator[T any] struct {
 	flushTimeout time.Duration
 
 	chEvents chan eventExtended[T]
-	chStop   chan struct{}
+	chDone   chan struct{}
+	chMu     sync.RWMutex
 
 	isClose atomic.Bool
 }
 
+// AddAsync adds an event without waiting for the result.
+// Returns an error if the accumulator is closed (ErrSendToClose) or the context is canceled.
 func (a *Accumulator[T]) AddAsync(ctx context.Context, event T) (err error) {
 	if a.isClose.Load() {
 		return ErrSendToClose
 	}
 
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		return fmt.Errorf("AddAsync, check on write: %w", ctxErr)
+	}
+
 	defer func() {
 		// recover from panic caused by writing to a closed channel
 		if r := recover(); r != nil {
-			err = fmt.Errorf("AddSync, recover: %v", r)
+			err = fmt.Errorf("AddAsync, recover: %v", r)
 		}
 	}()
+
+	a.chMu.RLock()
+	defer a.chMu.RUnlock()
 
 	select {
 	case <-ctx.Done():
 		return fmt.Errorf("AddAsync, check on write: %w", ctx.Err())
-	default:
-		a.chEvents <- eventExtended[T]{e: event}
+	case a.chEvents <- eventExtended[T]{e: event}:
+		return nil
 	}
-
-	return nil
 }
 
+// AddSync adds an event and blocks until the batch containing the event has been flushed.
+// Returns an error if the accumulator is closed (ErrSendToClose) or the context is canceled.
+// It returns a flushFunc error or a context error.
 func (a *Accumulator[T]) AddSync(ctx context.Context, event T) (err error) {
-	// check context before alloc eventExtended
-	select {
-	case <-ctx.Done():
-		return fmt.Errorf("AddSync, check before: %w", ctx.Err())
-	default:
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		return fmt.Errorf("AddSync, check before: %w", ctxErr)
 	}
 
 	e := eventExtended[T]{
@@ -130,11 +144,15 @@ func (a *Accumulator[T]) AddSync(ctx context.Context, event T) (err error) {
 		}
 	}()
 
+	a.chMu.RLock()
+
 	// check context with write to channel
 	select {
 	case <-ctx.Done():
+		a.chMu.RUnlock()
 		return fmt.Errorf("AddSync, check on write: %w", ctx.Err())
 	case a.chEvents <- e:
+		a.chMu.RUnlock()
 	}
 
 	// check context with wait event result
@@ -150,15 +168,20 @@ func (a *Accumulator[T]) AddSync(ctx context.Context, event T) (err error) {
 	}
 }
 
+// Stop properly terminates the battery's operation.
+// It blocks until the remaining events have been processed.
 func (a *Accumulator[T]) Stop() {
 	if !a.isClose.CompareAndSwap(false, true) {
 		return
 	}
 
+	a.chMu.Lock()
 	close(a.chEvents)
-	<-a.chStop
+	a.chMu.Unlock()
+	<-a.chDone
 }
 
+// IsClosed returns true if the accumulator has been stopped.
 func (a *Accumulator[T]) IsClosed() bool {
 	return a.isClose.Load()
 }
@@ -193,7 +216,7 @@ loop:
 
 	ticker.Stop()
 	flush()
-	a.chStop <- struct{}{}
+	a.chDone <- struct{}{}
 }
 
 func (a *Accumulator[T]) flush(events []eventExtended[T]) {
@@ -205,12 +228,12 @@ func (a *Accumulator[T]) flush(events []eventExtended[T]) {
 	defer cancel()
 
 	originalEvents, _ := a.batchOrigEvents.Get().([]T)
-	for i := 0; i < len(events); i++ {
+	for i := range events {
 		originalEvents = append(originalEvents, events[i].e)
 	}
 
 	err := a.flushFunc(ctx, originalEvents)
-	for i := 0; i < len(events); i++ {
+	for i := range events {
 		if events[i].fallback == nil {
 			continue
 		}

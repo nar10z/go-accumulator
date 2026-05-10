@@ -10,7 +10,9 @@ package goaccum
 
 import "context"
 
-// FlushExec a function to call when an action needs to be performed
+// FlushExec is called when the accumulated batch needs to be processed.
+// The events slice is only valid for the duration of the function's execution.
+// Do not retain a reference to the slice outside the function call.
 type FlushExec[T any] func(ctx context.Context, events []T) error
 
 func noop[T any](_ context.Context, _ []T) error {
