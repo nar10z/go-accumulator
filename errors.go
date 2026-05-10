@@ -11,6 +11,6 @@ package goaccum
 import "errors"
 
 var (
-	// ErrSendToClose ...
+	// ErrSendToClose is returned when attempting to send an event to a closed accumulator.
 	ErrSendToClose = errors.New("accumulator is closed")
 )

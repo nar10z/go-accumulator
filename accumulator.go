@@ -21,7 +21,12 @@ const (
 	defaultFlushInterval = time.Millisecond * 250
 )
 
-// New creates a new data Accumulator
+// New creates a new Accumulator.
+//
+//   - flushSize: maximum batch size (0 = 1000).
+//   - flushInterval: interval between flushes (0 = 250ms).
+//   - flushTimeout: timeout for executing flushFunc (0 = flushInterval).
+//   - flushFunc: batch processing function. Cannot be nil.
 func New[T any](
 	flushSize uint,
 	flushInterval time.Duration,
@@ -78,6 +83,8 @@ type Accumulator[T any] struct {
 	isClose         atomic.Bool
 }
 
+// AddAsync adds an event without waiting for the result.
+// Returns an error if the accumulator is closed (ErrSendToClose) or the context is canceled.
 func (a *Accumulator[T]) AddAsync(ctx context.Context, event T) (err error) {
 	if a.isClose.Load() {
 		return ErrSendToClose
@@ -100,6 +107,9 @@ func (a *Accumulator[T]) AddAsync(ctx context.Context, event T) (err error) {
 	return nil
 }
 
+// AddSync adds an event and blocks until the batch containing the event has been flushed.
+// Returns an error if the accumulator is closed (ErrSendToClose) or the context is canceled.
+// It returns a flushFunc error or a context error.
 func (a *Accumulator[T]) AddSync(ctx context.Context, event T) (err error) {
 	// check context before alloc eventExtended
 	select {
@@ -144,6 +154,8 @@ func (a *Accumulator[T]) AddSync(ctx context.Context, event T) (err error) {
 	}
 }
 
+// Stop properly terminates the battery's operation.
+// It blocks until the remaining events have been processed.
 func (a *Accumulator[T]) Stop() {
 	if !a.isClose.CompareAndSwap(false, true) {
 		return
@@ -153,6 +165,7 @@ func (a *Accumulator[T]) Stop() {
 	<-a.chStop
 }
 
+// IsClosed returns true if the accumulator has been stopped.
 func (a *Accumulator[T]) IsClosed() bool {
 	return a.isClose.Load()
 }
