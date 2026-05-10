@@ -9,31 +9,32 @@ go test -bench=. -test.benchmem -test.benchtime=1000000x -test.count=5
 goos: darwin
 goarch: arm64
 pkg: accumulator-example
+cpu: Apple M1
 Benchmark_accum
 Benchmark_accum/go-accumulator_async
-Benchmark_accum/go-accumulator_async-8         	 1000000	       167.0 ns/op	       0 B/op	       0 allocs/op
-Benchmark_accum/go-accumulator_async-8         	 1000000	       167.8 ns/op	       0 B/op	       0 allocs/op
-Benchmark_accum/go-accumulator_async-8         	 1000000	       189.2 ns/op	       0 B/op	       0 allocs/op
-Benchmark_accum/go-accumulator_async-8         	 1000000	       105.1 ns/op	       0 B/op	       0 allocs/op
-Benchmark_accum/go-accumulator_async-8         	 1000000	       104.8 ns/op	       0 B/op	       0 allocs/op
+Benchmark_accum/go-accumulator_async-8         	 1000000	       152.6 ns/op	       0 B/op	       0 allocs/op
+Benchmark_accum/go-accumulator_async-8         	 1000000	       155.5 ns/op	       0 B/op	       0 allocs/op
+Benchmark_accum/go-accumulator_async-8         	 1000000	       242.0 ns/op	       0 B/op	       0 allocs/op
+Benchmark_accum/go-accumulator_async-8         	 1000000	       187.9 ns/op	       0 B/op	       0 allocs/op
+Benchmark_accum/go-accumulator_async-8         	 1000000	       199.1 ns/op	       0 B/op	       0 allocs/op
 Benchmark_accum/lrweck/accumulator
-Benchmark_accum/lrweck/accumulator-8           	 1000000	       146.5 ns/op	       0 B/op	       0 allocs/op
-Benchmark_accum/lrweck/accumulator-8           	 1000000	       143.3 ns/op	       0 B/op	       0 allocs/op
-Benchmark_accum/lrweck/accumulator-8           	 1000000	       142.8 ns/op	       0 B/op	       0 allocs/op
-Benchmark_accum/lrweck/accumulator-8           	 1000000	       140.9 ns/op	       0 B/op	       0 allocs/op
-Benchmark_accum/lrweck/accumulator-8           	 1000000	       144.5 ns/op	       0 B/op	       0 allocs/op
+Benchmark_accum/lrweck/accumulator-8           	 1000000	       149.0 ns/op	       0 B/op	       0 allocs/op
+Benchmark_accum/lrweck/accumulator-8           	 1000000	       151.2 ns/op	       0 B/op	       0 allocs/op
+Benchmark_accum/lrweck/accumulator-8           	 1000000	       148.7 ns/op	       0 B/op	       0 allocs/op
+Benchmark_accum/lrweck/accumulator-8           	 1000000	       158.8 ns/op	       0 B/op	       0 allocs/op
+Benchmark_accum/lrweck/accumulator-8           	 1000000	       152.6 ns/op	       0 B/op	       0 allocs/op
 Benchmark_accum/go-accumulator_sync
-Benchmark_accum/go-accumulator_sync-8          	 1000000	      1352 ns/op	     187 B/op	       3 allocs/op
-Benchmark_accum/go-accumulator_sync-8          	 1000000	      1353 ns/op	     182 B/op	       3 allocs/op
-Benchmark_accum/go-accumulator_sync-8          	 1000000	      1303 ns/op	     184 B/op	       3 allocs/op
-Benchmark_accum/go-accumulator_sync-8          	 1000000	      1302 ns/op	     182 B/op	       3 allocs/op
-Benchmark_accum/go-accumulator_sync-8          	 1000000	      1303 ns/op	     183 B/op	       3 allocs/op
+Benchmark_accum/go-accumulator_sync-8          	 1000000	      1053 ns/op	     209 B/op	       4 allocs/op
+Benchmark_accum/go-accumulator_sync-8          	 1000000	      1052 ns/op	     206 B/op	       4 allocs/op
+Benchmark_accum/go-accumulator_sync-8          	 1000000	      1102 ns/op	     204 B/op	       4 allocs/op
+Benchmark_accum/go-accumulator_sync-8          	 1000000	      1101 ns/op	     203 B/op	       4 allocs/op
+Benchmark_accum/go-accumulator_sync-8          	 1000000	      1052 ns/op	     205 B/op	       4 allocs/op
 Benchmark_accum/go-accumulator
-Benchmark_accum/go-accumulator-8               	 1000000	       882.8 ns/op	      89 B/op	       1 allocs/op
-Benchmark_accum/go-accumulator-8               	 1000000	       381.6 ns/op	      26 B/op	       0 allocs/op
-Benchmark_accum/go-accumulator-8               	 1000000	      1403 ns/op	     179 B/op	       3 allocs/op
-Benchmark_accum/go-accumulator-8               	 1000000	      1103 ns/op	     141 B/op	       2 allocs/op
-Benchmark_accum/go-accumulator-8               	 1000000	       233.2 ns/op	       4 B/op	       0 allocs/op
+Benchmark_accum/go-accumulator-8               	 1000000	       462.2 ns/op	      82 B/op	       1 allocs/op
+Benchmark_accum/go-accumulator-8               	 1000000	       901.7 ns/op	     175 B/op	       3 allocs/op
+Benchmark_accum/go-accumulator-8               	 1000000	       851.7 ns/op	     155 B/op	       3 allocs/op
+Benchmark_accum/go-accumulator-8               	 1000000	       353.9 ns/op	      55 B/op	       1 allocs/op
+Benchmark_accum/go-accumulator-8               	 1000000	       205.3 ns/op	       8 B/op	       0 allocs/op
 PASS
 ```
 

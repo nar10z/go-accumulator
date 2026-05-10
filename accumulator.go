@@ -11,9 +11,10 @@ package goaccum
 import (
 	"context"
 	"fmt"
-	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/bytedance/gopkg/lang/syncx"
 )
 
 const (
@@ -54,15 +55,17 @@ func New[T any](
 		flushTimeout: flushTimeout,
 
 		chEvents: make(chan eventExtended[T], flushSize),
-		batchEvents: sync.Pool{
+		batchEvents: syncx.Pool{
 			New: func() any {
 				return make([]eventExtended[T], 0, flushSize)
 			},
+			NoGC: true,
 		},
-		batchOrigEvents: sync.Pool{
+		batchOrigEvents: syncx.Pool{
 			New: func() any {
 				return make([]T, 0, flushSize)
 			},
+			NoGC: true,
 		},
 
 		chDone: make(chan struct{}),
@@ -74,13 +77,16 @@ func New[T any](
 }
 
 type Accumulator[T any] struct {
-	batchEvents     sync.Pool
-	batchOrigEvents sync.Pool
-	flushFunc       FlushExec[T]
-	flushTimeout    time.Duration
-	chEvents        chan eventExtended[T]
-	chDone          chan struct{}
-	isClose         atomic.Bool
+	batchEvents     syncx.Pool
+	batchOrigEvents syncx.Pool
+
+	flushFunc    FlushExec[T]
+	flushTimeout time.Duration
+
+	chEvents chan eventExtended[T]
+	chDone   chan struct{}
+
+	isClose atomic.Bool
 }
 
 // AddAsync adds an event without waiting for the result.
@@ -221,7 +227,10 @@ func (a *Accumulator[T]) flush(events []eventExtended[T]) {
 			continue
 		}
 
-		events[i].fallback <- err
+		select {
+		case events[i].fallback <- err:
+		default:
+		}
 	}
 
 	a.batchOrigEvents.Put(originalEvents[:0])
