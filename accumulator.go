@@ -65,7 +65,7 @@ func New[T any](
 			},
 		},
 
-		chStop: make(chan struct{}),
+		chDone: make(chan struct{}),
 	}
 
 	go a.startFlusher(flushInterval, int(flushSize))
@@ -79,7 +79,7 @@ type Accumulator[T any] struct {
 	flushFunc       FlushExec[T]
 	flushTimeout    time.Duration
 	chEvents        chan eventExtended[T]
-	chStop          chan struct{}
+	chDone          chan struct{}
 	isClose         atomic.Bool
 }
 
@@ -162,7 +162,7 @@ func (a *Accumulator[T]) Stop() {
 	}
 
 	close(a.chEvents)
-	<-a.chStop
+	<-a.chDone
 }
 
 // IsClosed returns true if the accumulator has been stopped.
@@ -201,7 +201,7 @@ loop:
 	ticker.Stop()
 	a.chEvents = nil
 	flush()
-	a.chStop <- struct{}{}
+	a.chDone <- struct{}{}
 }
 
 func (a *Accumulator[T]) flush(events []eventExtended[T]) {
