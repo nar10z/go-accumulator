@@ -11,6 +11,7 @@ package goaccum
 import (
 	"context"
 	"fmt"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -85,6 +86,7 @@ type Accumulator[T any] struct {
 
 	chEvents chan eventExtended[T]
 	chDone   chan struct{}
+	chMu     sync.RWMutex
 
 	isClose atomic.Bool
 }
@@ -106,6 +108,9 @@ func (a *Accumulator[T]) AddAsync(ctx context.Context, event T) (err error) {
 			err = fmt.Errorf("AddAsync, recover: %v", r)
 		}
 	}()
+
+	a.chMu.RLock()
+	defer a.chMu.RUnlock()
 
 	select {
 	case <-ctx.Done():
@@ -139,11 +144,15 @@ func (a *Accumulator[T]) AddSync(ctx context.Context, event T) (err error) {
 		}
 	}()
 
+	a.chMu.RLock()
+
 	// check context with write to channel
 	select {
 	case <-ctx.Done():
+		a.chMu.RUnlock()
 		return fmt.Errorf("AddSync, check on write: %w", ctx.Err())
 	case a.chEvents <- e:
+		a.chMu.RUnlock()
 	}
 
 	// check context with wait event result
@@ -166,7 +175,9 @@ func (a *Accumulator[T]) Stop() {
 		return
 	}
 
+	a.chMu.Lock()
 	close(a.chEvents)
+	a.chMu.Unlock()
 	<-a.chDone
 }
 

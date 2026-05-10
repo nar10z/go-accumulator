@@ -128,7 +128,6 @@ func Benchmark_accum(b *testing.B) {
 			for i := range n1 {
 				_ = accumulator.AddAsync(ctx, newData(i))
 			}
-
 		})
 
 		wg.Go(func() {
@@ -137,7 +136,6 @@ func Benchmark_accum(b *testing.B) {
 					return accumulator.AddSync(ctx, newData(i))
 				})
 			}
-
 		})
 
 		wg.Wait()
