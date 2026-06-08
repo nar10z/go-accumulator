@@ -4,7 +4,7 @@ go 1.26
 
 require (
 	github.com/lrweck/accumulator v0.0.0-20230204043344-6f6538ed8d35
-	github.com/nar10z/go-accumulator v1.1.1
+	github.com/nar10z/go-accumulator/v2 v2.0.0
 	golang.org/x/sync v0.20.0
 )
 
