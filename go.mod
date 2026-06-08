@@ -1,4 +1,4 @@
-module github.com/nar10z/go-accumulator
+module github.com/nar10z/go-accumulator/v2
 
 go 1.26
 
