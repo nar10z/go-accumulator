@@ -1,11 +1,11 @@
 module github.com/nar10z/go-accumulator/v2
 
-go 1.26
+go 1.27
 
 require (
 	github.com/bytedance/gopkg v0.1.4
 	github.com/stretchr/testify v1.11.1
-	golang.org/x/sync v0.20.0
+	golang.org/x/sync v0.24.0
 )
 
 require (
